@@ -1,10 +1,10 @@
-# SalesBanana — INITIAL Technical Implementation Plan
+# SalesBanana — Technical Implementation Plan
 
-This is the initial implementation plan for our SalesBanana solution. 
+This is the implementation plan for the SalesBanana solution, updated to reflect the current state of the project.
 
 ## System Overview
 
-A pipeline that takes a natural-language brief about a data platform diagram and produces a publication-ready illustration through orchestrated LLM calls, following the PaperBanana agent architecture.
+A pipeline that takes a natural-language brief about a diagram and produces a publication-ready illustration through orchestrated LLM calls, with a web UI for interactive use.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -25,57 +25,69 @@ A pipeline that takes a natural-language brief about a data platform diagram and
 
 | Component            | Tool                        | Why                                                  |
 |----------------------|-----------------------------|------------------------------------------------------|
-| **Orchestrator**     | Python 3.12 + LangChain     | Chain sequential agent calls, manage state            |
-| **LLM (text)**       | OpenAI GPT-4o via API       | Planning, critique, style application                 |
-| **Image generation** | User-configurable (default: GPT-4o image gen) | Native multimodal generation from text descriptions   |
-| **Reference store**  | Local folder + `refs.json`  | No DB needed — the paper proved random ≈ semantic     |
-| **Config / prompts** | YAML files                  | Editable without code changes                         |
-| **Output**           | PNG (4K) or PPTX embed      | Direct to slides via `python-pptx` if needed          |
+| **Orchestrator**     | Python 3.12+                | Direct OpenAI SDK calls, no framework overhead       |
+| **LLM (text)**       | OpenAI GPT-4o via API       | Planning, critique, style application                |
+| **Image generation** | OpenAI `gpt-image-1` (configurable) | Native multimodal generation from text descriptions |
+| **Reference store**  | Local folder + `refs.json`  | No DB needed — category-based random selection       |
+| **Config / prompts** | `.env` + YAML files         | Editable without code changes                        |
+| **Settings**         | pydantic-settings           | Type-safe config loaded from `.env`                  |
+| **Data models**      | Pydantic v2                 | Structured I/O between agents                        |
+| **Web UI**           | FastAPI + Jinja2             | Browser-based brief entry and image viewing          |
+| **Output**           | PNG (1536x1024 default)     | Timestamped run directories with all artifacts       |
 
 ### Image Generation Model Configuration
 
-The image generation model is **user-configurable** via `config/settings.yaml`. Supported models:
+The image generation model is configurable via the `IMAGE_MODEL` env var in `.env`. The default is `gpt-image-1`.
 
-| Model ID | Provider | Notes |
-|----------|----------|-------|
-| `gpt-image-1` | OpenAI | **Default.** GPT-4o native image generation |
-| `dall-e-3` | OpenAI | Alternative OpenAI model |
-| `stable-diffusion-xl` | Stability AI | Requires separate API key |
-
-Configuration example in `config/settings.yaml`:
-```yaml
-image_generation:
-  model: "gpt-image-1"  # User can change this
-  size: "1536x1024"
-  quality: "high"
-```
+| Env var | Default | Options |
+|---------|---------|---------|
+| `IMAGE_MODEL` | `gpt-image-1` | `gpt-image-1`, `dall-e-3` |
+| `IMAGE_SIZE` | `1536x1024` | `1024x1024`, `1024x1536`, `1536x1024` |
+| `IMAGE_QUALITY` | `high` | `low`, `medium`, `high` |
 
 ---
 
-## Initial Directory Structure
+## Directory Structure
 
 ```
 salesbanana/
 ├── config/
-│   ├── settings.yaml           # Model configuration (image gen model, sizes, etc.)
-│   ├── style_guide.md          # Your aesthetic guidelines (one-time extraction)
-│   └── prompts.yaml            # All agent prompts (editable without code changes)
+│   ├── README.md              # Component documentation
+│   ├── style_guide.md         # Brand aesthetic guidelines
+│   └── prompts.yaml           # All agent prompts (editable without code changes)
 ├── references/
-│   ├── refs.json               # Metadata: {id, description, category, tags}
-│   └── images/                 # 20-30 reference diagram PNGs
+│   ├── README.md              # Component documentation
+│   ├── refs.json              # Metadata: {id, file, category, description, tags}
+│   └── images/                # Reference diagram PNGs
 ├── src/
-│   ├── pipeline.py             # Main orchestrator
-│   ├── config.py               # Configuration loader (settings.yaml parsing)
+│   ├── __init__.py
+│   ├── config.py              # Settings (pydantic-settings from .env), OpenAI client
+│   ├── models.py              # Pydantic data models (Reference, PipelineResult, etc.)
+│   ├── pipeline.py            # Main orchestrator
 │   ├── agents/
-│   │   ├── retriever.py        # Reference selection (category classification)
-│   │   ├── planner.py          # Brief → detailed visual description
-│   │   ├── stylist.py          # Apply aesthetic guidelines from style_guide.md
-│   │   ├── visualizer.py       # Generate image (configurable backend)
-│   │   └── critic.py           # Multimodal evaluation + refinement
+│   │   ├── README.md          # Component documentation
+│   │   ├── __init__.py
+│   │   ├── retriever.py       # Reference selection (category classification)
+│   │   ├── planner.py         # Brief → detailed visual description
+│   │   ├── stylist.py         # Apply aesthetic guidelines from style_guide.md
+│   │   ├── visualizer.py      # Generate image via OpenAI API
+│   │   └── critic.py          # Multimodal evaluation + refinement
 │   └── utils/
-│       ├── image_utils.py      # Base64 encoding, resizing, format conversion
-│       └── prompt_loader.py    # Load and template YAML prompts
-├── output/                     # Generated diagrams (timestamped)
+│       ├── README.md          # Component documentation
+│       ├── __init__.py
+│       ├── image_utils.py     # Base64 encoding, resizing, file I/O
+│       └── prompt_loader.py   # Load and template YAML prompts
+├── templates/
+│   └── index.html             # Web UI (single page, embedded CSS + JS)
+├── output/                    # Generated diagrams (timestamped run directories)
+├── docs/
+│   └── implementation-plan-raw.md
+├── .env                       # Local config (gitignored)
+├── .env.example               # Config template
+├── .gitignore
+├── README.md                  # Project overview with links to component docs
+├── app.py                     # FastAPI web server
+├── main.py                    # CLI entry point
 └── requirements.txt
 ```
 
@@ -88,308 +100,286 @@ salesbanana/
 **One-time setup.** No vector database. No embeddings.
 
 ```json
-// refs.json
 [
   {
     "id": "ref_001",
-    "file": "images/pipeline_dlt_bigquery.png",
-    "category": "pipeline",           // pipeline | architecture | integration | flow
-    "description": "DLT ingestion pipeline from 3 sources into BigQuery with transformation layer",
-    "tags": ["data-pipeline", "etl", "bigquery", "multi-source"]
-  },
-  {
-    "id": "ref_002",
-    "file": "images/platform_architecture.png",
-    "category": "architecture",
-    "description": "Three-tier data platform: ingestion, transformation, serving with Looker",
-    "tags": ["architecture", "layered", "looker", "dbt"]
+    "file": "images/rag_pipeline_explainer.png",
+    "category": "pipeline",
+    "description": "Left-to-right RAG flow: user question input, search step, generation step...",
+    "tags": ["pipeline", "concept-explainer", "rag", "llm"]
   }
 ]
 ```
 
-**Selection strategy** (from the paper's finding): Category match is sufficient.
-If brief mentions "pipeline" → pick 3–5 from `category: pipeline`.
-Random within category works fine.
+**Categories** (6 total): `pipeline`, `staged_progression`, `canvas`, `comparison_cards`, `matrix`, `concept_explainer`
+
+**Selection strategy**: Category match → random sample of `min(NUM_REFERENCES, available)`. Category match is sufficient — no embedding search needed.
 
 ---
 
 ### 2. Retriever Agent
 
 ```
-Input:  user_brief (string)
-Output: list[Reference] (3-5 items with images + descriptions)
+Input:  brief (str)
+Output: (list[Reference], category: str)
 
 Logic:
-  1. Ask LLM to classify brief into one of: pipeline | architecture | integration | flow
-  2. Filter refs.json by that category
-  3. Return random sample of min(5, available)
-
-  (No embedding search needed)
+  1. LLM classifies brief into one of 6 categories
+  2. Filter refs.json by that category (fallback: all refs)
+  3. Random sample of min(NUM_REFERENCES, available)
+  4. Load base64 images for each selected reference
 ```
 
-**Prompt Requirements for `retriever_classify`:**
+**Prompt** (`retriever_classify` in `prompts.yaml`):
 
-| Requirement | Description |
-|-------------|-------------|
-| **Task framing** | Classification task with constrained output space |
-| **Role assignment** | Technical diagram analyst |
-| **Input context** | The raw user brief describing the desired diagram |
-| **Output constraint** | Exactly ONE category from the predefined taxonomy |
-| **Category definitions** | Each category must have a clear, distinguishing definition to enable accurate classification |
-| **Output format** | Single word response (the category name) — no explanations |
+| Requirement | Implementation |
+|-------------|----------------|
+| **Role** | Technical diagram analyst |
+| **Task** | Classify brief into exactly ONE category |
+| **Categories** | `pipeline`, `staged_progression`, `canvas`, `comparison_cards`, `matrix`, `concept_explainer` — each with a definition and usage guidance |
+| **Output** | Single word (category name), no explanation |
+| **Temperature** | 0.0 (deterministic) |
 
-**Prompt must contain:**
-1. **Explicit category taxonomy** with semantic boundaries:
-   - `pipeline`: Linear data movement from source(s) to destination(s)
-   - `architecture`: System components, layers, and their structural relationships
-   - `integration`: Connection patterns between multiple external systems
-   - `flow`: Sequential processes, decisions, or state transitions
-2. **Classification instruction** that enforces single-label output
-3. **Input placeholder** `{brief}` for the user's request
-4. **Output format enforcement** to return only the category name
+**Fallback**: If the LLM returns an invalid category, defaults to `pipeline`. Controlled by `VALID_CATEGORIES` set in `retriever.py`.
 
 ---
 
 ### 3. Planner Agent
 
 ```
-Input:  user_brief + reference_images + reference_descriptions
-Output: detailed_visual_description (string, ~500 words)
+Input:  brief (str) + refs (list[Reference] with base64 images)
+Output: PlannerOutput (description: str, word_count: int)
 
 Logic:
-  1. Send brief + reference images (as base64) to LLM
+  1. Build multimodal message: text prompt + reference images (detail="low")
   2. LLM performs in-context learning from references
-  3. Returns structured visual description
+  3. Returns structured visual description (~500 words)
 ```
 
-**Prompt Requirements for `planner`:**
+**Prompt** (`planner` in `prompts.yaml`):
 
-| Requirement | Description |
-|-------------|-------------|
-| **Task framing** | Visual description generation with structured output |
-| **Role assignment** | Technical diagram planner specializing in data platform visualizations |
-| **In-context learning** | Reference images + descriptions provided as few-shot examples |
-| **Output specificity** | Description must be detailed enough to reconstruct the diagram without the original brief |
-| **Output structure** | Enforce 5-section format for consistency |
-
-**Prompt must contain:**
-1. **Role definition**: Expert in technical diagram planning for sales/presentation materials
-2. **Reference injection pattern**:
-   - Placeholder for number of references `{n}`
-   - Loop construct for each reference: `{image}` + `{description}`
-   - Instruction to learn visual patterns from references
-3. **Input placeholder**: `{brief}` — the user's diagram request
-4. **Structured output requirements** — the description must address ALL of these sections:
-   - **COMPONENTS**: Exhaustive list of visual elements (boxes, icons, databases, services) with exact label text
-   - **LAYOUT**: Spatial arrangement pattern (left-to-right, top-to-bottom, radial, etc.) with positioning instructions
-   - **CONNECTIONS**: Every arrow/line with source → destination, direction, and optional labels
-   - **GROUPING**: Logical clusters, section headers, visual containers
-   - **DATA FLOW**: The narrative/reading order — what story does the diagram tell?
-5. **Specificity constraint**: Explicit instruction that the output must enable diagram recreation by someone who hasn't seen the original brief
-6. **Length guidance**: Target ~500 words to ensure sufficient detail without verbosity
+| Requirement | Implementation |
+|-------------|----------------|
+| **Role** | Expert technical diagram planner for sales presentations |
+| **Input placeholders** | `{brief}`, `{n}` (reference count), `{reference_descriptions}` |
+| **Output sections** | COMPONENTS, LAYOUT, CONNECTIONS, GROUPING, DATA FLOW |
+| **Specificity** | Must enable diagram recreation without the original brief |
+| **Temperature** | 0.7 (creative generation) |
 
 ---
 
 ### 4. Stylist Agent
 
 ```
-Input:  visual_description + style_guide.md
-Output: style_optimized_description (string)
+Input:  description (str)
+Output: styled_description (str)
 
 Logic:
-  1. Send description + style guide to LLM
-  2. LLM rewrites description with explicit style directives
-  3. Returns enriched description with colors, shapes, typography
+  1. Load style_guide.md from config path
+  2. Send description + style guide to LLM
+  3. Returns enriched description with hex colors, px sizes, shape specs
 ```
 
-**Prompt Requirements for `stylist`:**
+**Prompt** (`stylist` in `prompts.yaml`):
 
-| Requirement | Description |
-|-------------|-------------|
-| **Task framing** | Style transfer / enrichment task |
-| **Role assignment** | Visual design expert applying brand guidelines |
-| **Input context** | The visual description from Planner + the full style guide |
-| **Output constraint** | Same structural content, enriched with explicit visual styling |
-| **Preservation rule** | Must not alter the logical content — only add style directives |
-
-**Prompt must contain:**
-1. **Role definition**: Visual designer applying brand-consistent styling to technical diagrams
-2. **Input placeholders**:
-   - `{visual_description}` — the Planner's output
-   - `{style_guide}` — the full contents of `style_guide.md`
-3. **Transformation instruction**: Rewrite the description to include explicit style directives (colors with hex codes, exact shape types, connector styles, font specifications)
-4. **Preservation constraint**: Explicit instruction to maintain all components, connections, and layout from the original description
-5. **Output optimization goal**: The enriched description becomes the direct prompt for image generation — optimize for image model comprehension
+| Requirement | Implementation |
+|-------------|----------------|
+| **Role** | Visual design expert applying brand guidelines |
+| **Input placeholders** | `{visual_description}`, `{style_guide}` |
+| **Preservation constraint** | Must not alter logical content — only add style directives |
+| **Output target** | Optimized for image model comprehension |
+| **Temperature** | 0.3 (faithful style application) |
 
 ---
 
 ### `style_guide.md` Specification
 
-**Purpose**: A single-source-of-truth document that captures the visual identity and design system for all generated diagrams. It enables consistent, brand-aligned outputs without requiring style instructions in every prompt.
+**Purpose**: Single-source-of-truth document for the visual identity of all generated diagrams. Injected verbatim into the Stylist prompt.
 
-**How the Stylist Agent leverages it**: The entire contents are injected into the Stylist prompt. The LLM uses it as a constraint document to transform abstract visual descriptions into style-specific rendering instructions.
+**Current sections** (164 lines):
 
-**Required Sections and Their Purpose:**
-
-| Section | Purpose | Contents | Leverage Strategy |
-|---------|---------|----------|-------------------|
-| **Color Palette** | Ensure brand consistency and visual hierarchy | Primary, secondary, accent, neutral colors with hex codes; anti-patterns (colors to avoid) | LLM maps semantic roles (e.g., "primary flow") to specific colors |
-| **Shape Vocabulary** | Create recognizable visual language | Shape-to-concept mappings (e.g., database = cylinder, service = rounded rectangle) | LLM translates component types to specific shapes |
-| **Connector Styles** | Standardize relationship visualization | Line styles (solid/dashed), weights, colors, arrowhead styles for different relationship types | LLM assigns connector styles based on relationship semantics (primary flow, optional, bidirectional) |
-| **Layout Principles** | Ensure readability and logical structure | Reading direction rules, spacing guidelines, grouping conventions, depth limits | LLM structures spatial arrangement according to diagram type |
-| **Typography Rules** | Maintain text hierarchy and readability | Font sizes, weights, and colors for different text types (labels, headers, annotations) | LLM specifies text styling for each text element |
-| **Anti-patterns** | Prevent common design mistakes | Explicit "do not" rules (e.g., no gradients, no more than 5 words per label) | LLM uses as negative constraints during style application |
-
-**Maximizing Style Guide Effectiveness:**
-1. **Extraction process**: Generate the guide by analyzing 10+ existing high-quality diagrams with the LLM
-2. **Specificity**: Use exact values (hex codes, pixel sizes) rather than relative terms
-3. **Semantic mapping**: Define which visual style applies to which semantic concept
-4. **Negative constraints**: Explicitly state what to avoid — this is as important as what to do
-5. **Hierarchy clarity**: Distinguish between primary, secondary, and accent uses for each style element
+| Section | Contents |
+|---------|----------|
+| **Brand Identity** | Audience and aesthetic framing (C-level, consulting context) |
+| **Colour Palette** | 8 colors with hex codes, usage rules, gradient specs |
+| **Typography** | Element-level specs (title, subtitle, body, labels), weight/color rules |
+| **Layout Principles** | Spacing, alignment, 12-column grid, reading direction |
+| **Shape Language** | Shape-to-usage mapping (rounded rect, circle, pill, dotted border, arrows) |
+| **Iconography** | Line icons only, placement in circle containers, size specs |
+| **Connectors and Flow** | Arrow thickness, color, direction, arrowhead style |
+| **Card Variants** | Standard, gradient, and input/output box specs |
+| **Definition & Takeaway Zones** | Bottom-section layout for concept explainers |
+| **Anti-patterns** | 11 explicit "never do this" rules |
 
 ---
 
 ### 5. Visualizer Agent
 
 ```
-Input:  style_optimized_description + model_config
-Output: generated_image (PNG bytes)
+Input:  styled_description (str)
+Output: image_bytes (bytes)
 
 Logic:
-  Call configured image generation endpoint (default: OpenAI GPT-4o image gen)
+  Call OpenAI images.generate() with styled description as prompt.
+  The styled description IS the prompt — no additional wrapping.
 ```
 
-**Implementation Requirements:**
-
-| Requirement | Description |
-|-------------|-------------|
-| **Model abstraction** | Support multiple image generation backends via unified interface |
-| **Configuration-driven** | Model selection via `config/settings.yaml`, not hardcoded |
-| **Prompt passthrough** | The Stylist output IS the image generation prompt — no additional wrapping |
-
-**API Implementation Pattern:**
+**Implementation:**
 ```python
-from openai import OpenAI
-from config import settings
-
-client = OpenAI()
-
-def generate_image(styled_description: str) -> bytes:
-    """Generate image using configured model."""
-    config = settings.image_generation
-
-    response = client.images.generate(
-        model=config.model,           # From settings.yaml (default: "gpt-image-1")
-        prompt=styled_description,
-        size=config.size,             # From settings.yaml (default: "1536x1024")
-        quality=config.quality,       # From settings.yaml (default: "high")
-        n=1
-    )
-
-    return base64.b64decode(response.data[0].b64_json)
+response = client.images.generate(
+    model=settings.image_model,          # From .env (default: "gpt-image-1")
+    prompt=styled_description,
+    size=settings.image_size.value,      # From .env (default: "1536x1024")
+    quality=settings.image_quality.value, # From .env (default: "high")
+    n=1,
+    response_format="b64_json",
+)
+image_bytes = base64.b64decode(response.data[0].b64_json)
 ```
-
-**Image Prompt Engineering Principles:**
-The `style_optimized_description` from Stylist serves as the direct prompt. Quality depends on:
-1. **Specificity**: Exact colors (hex), shapes, positions — not vague descriptions
-2. **Structured hierarchy**: Most important elements first, details later
-3. **Explicit negatives**: Include what NOT to render (e.g., "no background patterns")
-4. **Technical diagram framing**: Prefix with diagram type context (e.g., "Technical architecture diagram showing...")
 
 ---
 
 ### 6. Critic Agent
 
 ```
-Input:  generated_image + original_brief + current_description
-Output: refined_description (string) OR "APPROVED"
+Input:  image_bytes (bytes) + brief (str) + description (str)
+Output: CriticOutput (approved: bool, refined_description: str | None, feedback_summary: str | None)
 
 Logic:
-  1. Send image (base64) + brief + description to LLM (vision-capable)
-  2. LLM evaluates against 4 dimensions:
-     - Faithfulness: Are all components from the brief present?
-     - Conciseness: Is there clutter or unnecessary elements?
-     - Readability: Can you read all labels? Is the flow clear?
-     - Aesthetics: Does it match the style guide?
-  3. Returns either:
-     - Refined description with specific fixes, OR
-     - "APPROVED" if quality is sufficient
+  1. Send image (base64, detail="high") + brief + description to LLM
+  2. Evaluate on 4 dimensions: Faithfulness, Conciseness, Readability, Aesthetics
+  3. Returns "APPROVED" or a complete refined description
 ```
 
-**Prompt Requirements for `critic`:**
+**Prompt** (`critic` in `prompts.yaml`):
 
-| Requirement | Description |
-|-------------|-------------|
-| **Task framing** | Multimodal evaluation task with binary outcome (approve or refine) |
-| **Role assignment** | Quality assurance reviewer for technical diagrams |
-| **Input context** | Generated image + original brief + description used for generation |
-| **Evaluation framework** | 4-dimension rubric (Faithfulness, Conciseness, Readability, Aesthetics) |
-| **Output modes** | Either "APPROVED" or a complete refined description |
-
-**Prompt must contain:**
-1. **Role definition**: Technical diagram QA reviewer ensuring sales-presentation quality
-2. **Input placeholders**:
-   - `{brief}` — the original user request
-   - `{description}` — the styled description used to generate the image
-   - `{image}` — the generated image (base64 encoded)
-3. **Evaluation rubric** with clear pass/fail criteria for each dimension:
-   - **FAITHFULNESS**: All components from brief present? Connections correct?
-   - **CONCISENESS**: No unnecessary elements or visual clutter?
-   - **READABILITY**: Labels legible? Flow direction unambiguous?
-   - **AESTHETICS**: Professional appearance suitable for sales presentations?
-4. **Output branching logic**:
-   - If ANY dimension fails → Output a REFINED description with specific corrections
-   - If ALL dimensions pass → Output exactly `APPROVED`
-5. **Refinement quality constraint**: Corrections must be specific and actionable (e.g., "Change arrow from A to B to dashed line" not "improve connections")
-6. **Refinement format**: The refined output must be a complete, standalone description — not a diff or patch
+| Requirement | Implementation |
+|-------------|----------------|
+| **Role** | QA reviewer for technical diagrams in sales presentations |
+| **Input placeholders** | `{brief}`, `{description}`, image attached as base64 |
+| **Evaluation rubric** | Faithfulness, Conciseness, Readability, Aesthetics |
+| **Decision** | ALL pass → "APPROVED" on first line. ANY fail → complete refined description |
+| **Refinement quality** | Specific corrections, standalone description (not a diff) |
+| **Temperature** | 0.2 (consistent evaluation) |
 
 ---
 
-## Orchestration Flow
+## Data Models (`src/models.py`)
 
 ```python
-# pipeline.py — simplified
+Reference         # id, file, category, description, tags, image_base64
+PlannerOutput     # description, word_count
+CriticOutput      # approved, refined_description, feedback_summary
+PipelineResult    # image_bytes, image_path, rounds_taken, approved, run_dir
+RunMetadata       # brief, category, num_references, llm_model, image_model,
+                  #   rounds_taken, approved, timestamp, elapsed_seconds
+```
 
-def generate_diagram(brief: str, max_rounds: int = 3) -> bytes:
-    
+---
+
+## Orchestration Flow (`src/pipeline.py`)
+
+```python
+def generate_diagram(brief: str, max_rounds: int | None = None) -> PipelineResult:
+
+    # Setup
+    rounds = max_rounds or settings.max_refinement_rounds
+    run_dir = _create_run_dir()  # output/YYYYMMDD_HHMMSS/
+
     # Phase 1: Linear Planning
-    refs = retriever.select_references(brief, n=5)
-    description = planner.create_description(brief, refs)
-    styled_description = stylist.apply_style(description, STYLE_GUIDE)
-    
-    # Phase 2: Iterative Refinement Loop
-    current_description = styled_description
-    final_image = None
-    
-    for round in range(max_rounds):
-        image = visualizer.generate(current_description)
-        
-        critique = critic.evaluate(
-            image=image,
-            brief=brief,
-            description=current_description
-        )
-        
-        if critique == "APPROVED":
-            final_image = image
+    refs, category = retriever.select_references(brief)
+    planner_output = planner.create_description(brief, refs)
+    styled_description = stylist.apply_style(planner_output.description)
+
+    # Phase 2: Iterative Refinement
+    for round_num in range(1, rounds + 1):
+        image_bytes = visualizer.generate_image(current_description)
+        critique = critic.evaluate(image_bytes, brief, current_description)
+
+        if critique.approved:
             break
-        
-        current_description = critique  # Refined description
-        final_image = image             # Keep latest even if not approved
-    
-    return final_image
+        current_description = critique.refined_description
+
+    # Save final.png + run_metadata.json
+    return PipelineResult(image_bytes, image_path, rounds_taken, approved, run_dir)
 ```
 
-### State passed between agents:
+### State between agents:
 
 ```
-Retriever  ──(refs: list[{image, description}])──→  Planner
-Planner    ──(description: str)──────────────────→  Stylist
-Stylist    ──(styled_description: str)───────────→  Visualizer ←──┐
-Visualizer ──(image: bytes)──────────────────────→  Critic        │
-Critic     ──(refined_description: str)──────────────────────────→┘
-                   (loops back to Visualizer, max 3 times)
+Retriever  ──(refs + category)────────────→  Planner
+Planner    ──(PlannerOutput.description)──→  Stylist
+Stylist    ──(styled_description: str)────→  Visualizer ←──┐
+Visualizer ──(image_bytes: bytes)─────────→  Critic        │
+Critic     ──(CriticOutput.refined_description)────────────┘
+                   (loops back to Visualizer, max N times)
 ```
+
+### Output per run:
+
+```
+output/YYYYMMDD_HHMMSS/
+├── 01_retriever_refs.json
+├── 02_planner_description.md
+├── 03_stylist_description.md
+├── 04_round_N_image.png        (one per round)
+├── 04_round_N_critique.md      (one per round)
+├── final.png
+└── run_metadata.json
+```
+
+---
+
+## Entry Points
+
+### CLI (`main.py`)
+
+```bash
+python main.py "A pipeline showing data flowing from Stripe through ETL into Snowflake"
+python main.py --rounds 5 "..."
+echo "..." | python main.py
+```
+
+Accepts brief as argument or stdin. Optional `--rounds` override.
+
+### Web UI (`app.py` + `templates/index.html`)
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/` | GET | Serves the single-page UI |
+| `/api/generate` | POST | `{"brief": "..."}` → runs pipeline in thread pool → returns `{image_url, rounds_taken, approved, run_dir}` |
+| `/output/...` | GET | Static file serving for generated images |
+
+**UI states**: Input (textarea + Generate button, Cmd+Enter shortcut) → Loading (spinner + step progress) → Result (image + metadata badges + Generate Another).
+
+Pyne brand styling: `#6C63FF` purple, Inter font, white cards, 12px rounded corners.
+
+---
+
+## Configuration (`src/config.py`)
+
+All settings loaded from `.env` via pydantic-settings `BaseSettings`.
+
+| Env var | Default | Type | Purpose |
+|---------|---------|------|---------|
+| `OPENAI_API_KEY` | — | `str` | **Required** |
+| `LLM_MODEL` | `gpt-4o` | `str` | Text agents (retriever, planner, stylist, critic) |
+| `IMAGE_MODEL` | `gpt-image-1` | `str` | Image generation |
+| `IMAGE_SIZE` | `1536x1024` | `ImageSize` enum | `1024x1024`, `1024x1536`, `1536x1024` |
+| `IMAGE_QUALITY` | `high` | `ImageQuality` enum | `low`, `medium`, `high` |
+| `MAX_REFINEMENT_ROUNDS` | `3` | `int` (1-10) | Visualizer-critic loop limit |
+| `NUM_REFERENCES` | `5` | `int` (1-20) | References per run |
+| `OUTPUT_DIR` | `output` | `Path` | Resolved relative to project root |
+| `REFERENCES_DIR` | `references` | `Path` | Resolved relative to project root |
+| `STYLE_GUIDE_PATH` | `config/style_guide.md` | `Path` | Resolved relative to project root |
+| `PROMPTS_PATH` | `config/prompts.yaml` | `Path` | Resolved relative to project root |
+| `LOG_LEVEL` | `INFO` | `str` | Python logging level |
+
+Module-level singletons: `settings = Settings()`, `client = OpenAI(api_key=...)`.
 
 ---
 
@@ -400,55 +390,44 @@ Critic     ──(refined_description: str)────────────�
 | Retriever  | 1     | GPT-4o               | ~500          | $0.003    |
 | Planner    | 1     | GPT-4o               | ~3,000 (images in context) | $0.02 |
 | Stylist    | 1     | GPT-4o               | ~2,000        | $0.01     |
-| Visualizer | 3     | GPT-4o image gen (configurable) | —   | ~$0.12    |
-| Critic     | 3     | GPT-4o               | ~2,000 × 3 (image input) | $0.08 |
-| **Total**  |       |                      |               | **~$0.23** |
-
-*Note: Costs vary based on selected image generation model. GPT-4o image gen pricing shown as default.*
+| Visualizer | 1-3   | gpt-image-1 (configurable) | —        | ~$0.04-0.12 |
+| Critic     | 1-3   | GPT-4o               | ~2,000 × N (image input) | $0.03-0.08 |
+| **Total**  |       |                      |               | **~$0.10-0.23** |
 
 ---
 
-## Setup Steps
+## Setup
 
-### Step 1: Environment
 ```bash
-pip install openai langchain pyyaml pillow
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # then add your OPENAI_API_KEY
 ```
 
-**Environment Variables:**
-```bash
-export OPENAI_API_KEY="your-api-key"
+### Dependencies (`requirements.txt`)
+
+```
+openai>=1.40.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+pyyaml>=6.0
+pillow>=10.0.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+jinja2>=3.1.0
+python-multipart>=0.0.9
 ```
 
-### Step 2: Build Reference Gallery
-1. Export 20-30 of your best diagrams as PNGs from existing slides
-2. Create `refs.json` with metadata for each
-3. Organize by category
+### Populating References
 
-### Step 3: Extract Style Guide
-Run this ONE prompt against GPT-4o (with vision) with 10+ of your best diagrams attached:
-> "Analyze these diagrams and extract a comprehensive style guide covering:
-> color palette (with hex codes), shape conventions, connector styles,
-> layout patterns, and typography rules. Format the output as markdown
-> with the sections: Color Palette, Shape Vocabulary, Connector Styles,
-> Layout Principles, Typography Rules, and Anti-patterns."
+1. Add diagram PNGs to `references/images/`
+2. Add matching entries to `refs.json` with category, description, and tags
+3. Ensure categories match `VALID_CATEGORIES` in `src/agents/retriever.py` and the taxonomy in `config/prompts.yaml`
 
-Save output as `config/style_guide.md`.
-
-### Step 4: Write Prompts
-Create `config/prompts.yaml` with all agent prompts (templates above).
-
-### Step 5: Implement Pipeline
-Build `pipeline.py` connecting all agents in sequence.
-Each agent is ~30 lines of code — it's just an API call with a specific prompt.
-
-### Step 6: Test and Iterate
-Run 5-10 test briefs. The most common failure mode will be the Planner
-being too vague — make its prompt more demanding about specificity.
+---
 
 ## Prompt Engineering Best Practices
-
-This section codifies the AI engineering principles applied throughout the agent prompts.
 
 ### Prompt Structure Principles
 
@@ -467,6 +446,7 @@ This section codifies the AI engineering principles applied throughout the agent
 | **Image-text interleaving** | For Planner/Critic: place images inline with their descriptions, not at prompt end |
 | **Reference framing** | Prefix reference images with "Learn the visual patterns from these examples:" |
 | **Evaluation anchoring** | For Critic: provide the original brief as ground truth, not just the generated description |
+| **Detail level control** | `detail="low"` for reference images (save tokens), `detail="high"` for critic evaluation |
 
 ### Output Quality Control
 
@@ -474,8 +454,9 @@ This section codifies the AI engineering principles applied throughout the agent
 |-----------|-------------|
 | **Specificity over creativity** | Prompts emphasize exact values (hex codes, pixel sizes) over interpretable terms |
 | **Completeness checks** | Planner prompt requires 5 mandatory sections; incomplete outputs are invalid |
-| **Iterative refinement** | Critic loop allows 3 rounds of correction before accepting sub-optimal output |
+| **Iterative refinement** | Critic loop allows configurable rounds of correction (default 3) |
 | **Actionable feedback** | Critic must provide specific corrections, not general suggestions |
+| **Temperature tuning** | 0.0 (retriever), 0.2 (critic), 0.3 (stylist), 0.7 (planner) — calibrated per task |
 
 ### Configuration Externalization
 
