@@ -36,14 +36,18 @@ def generate_image(styled_description: str) -> bytes:
 
     full_prompt = f"{_get_system_prompt()}\n\n{styled_description}"
 
-    response = client.images.generate(
+    kwargs = dict(
         model=settings.image_model,
         prompt=full_prompt,
         size=settings.image_size.value,
         quality=settings.image_quality.value,
         n=1,
-        response_format="b64_json",
     )
+    # gpt-image-1 returns base64 by default; DALL-E models need this explicitly
+    if settings.image_model.startswith("dall-e"):
+        kwargs["response_format"] = "b64_json"
+
+    response = client.images.generate(**kwargs)
 
     image_base64 = response.data[0].b64_json
     image_bytes = base64.b64decode(image_base64)
