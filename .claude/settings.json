@@ -1,5 +1,3 @@
-  {
-    "enabledPlugins": {
-      "pr-review-toolkit@pyne-tools": true
-    }
-  }
+{
+  "enabledPlugins": {}
+}
