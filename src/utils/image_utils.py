@@ -33,6 +33,14 @@ def image_to_base64(image_path: Path, max_dimension: int = 1024) -> str:
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 
+def normalize_to_png(image_bytes: bytes) -> bytes:
+    """Convert any supported image format (WEBP, JPEG, etc.) to PNG bytes."""
+    img = Image.open(BytesIO(image_bytes)).convert("RGB")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def bytes_to_base64(image_bytes: bytes) -> str:
     """Convert raw image bytes to base64 string."""
     return base64.b64encode(image_bytes).decode("utf-8")

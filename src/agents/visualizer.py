@@ -4,6 +4,7 @@ import base64
 import logging
 
 from src.config import IMAGE_MODELS, client, get_google_client, settings
+from src.utils.image_utils import normalize_to_png
 from src.utils.prompt_loader import get_prompt
 
 logger = logging.getLogger(__name__)
@@ -21,11 +22,21 @@ def _get_system_prompt() -> str:
 
 def _generate_openai(model: str, prompt: str) -> bytes:
     """Generate an image via the OpenAI Images API."""
+    quality = settings.image_quality.value
+    size = settings.image_size.value
+
+    if model.startswith("dall-e"):
+        # DALL-E 3 only accepts "standard" and "hd"
+        quality = "hd" if quality == "high" else "standard"
+        # DALL-E 3 sizes: 1024x1024, 1024x1792, 1792x1024
+        dalle_size_map = {"1024x1536": "1024x1792", "1536x1024": "1792x1024"}
+        size = dalle_size_map.get(size, size)
+
     kwargs = dict(
         model=model,
         prompt=prompt,
-        size=settings.image_size.value,
-        quality=settings.image_quality.value,
+        size=size,
+        quality=quality,
         n=1,
     )
     if model.startswith("dall-e"):
@@ -37,7 +48,7 @@ def _generate_openai(model: str, prompt: str) -> bytes:
 
 
 def _generate_google(model: str, prompt: str) -> bytes:
-    """Generate an image via the Google GenAI API."""
+    """Generate an image via the Google GenAI API. Returns PNG bytes."""
     from google.genai import types
 
     google_client = get_google_client()
@@ -50,7 +61,8 @@ def _generate_google(model: str, prompt: str) -> bytes:
     )
     for part in response.candidates[0].content.parts:
         if part.inline_data is not None:
-            return part.inline_data.data
+            # Gemini returns WEBP/JPEG; normalize to PNG for pipeline consistency
+            return normalize_to_png(part.inline_data.data)
     raise RuntimeError(f"Gemini model {model} returned no image data")
 
 
@@ -59,7 +71,7 @@ def generate_image(styled_description: str, image_model: str | None = None) -> b
     Generate an image using the specified (or default) image generation model.
 
     Routes to the correct provider (OpenAI or Google) based on the IMAGE_MODELS
-    registry. Returns raw image bytes (PNG/WEBP/JPEG depending on provider).
+    registry. Always returns PNG bytes regardless of provider.
     """
     model = image_model or settings.image_model
     provider = IMAGE_MODELS[model]["provider"]

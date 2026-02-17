@@ -70,7 +70,7 @@ class Settings(BaseSettings):
 IMAGE_MODELS: dict[str, dict] = {
     "gpt-image-1":                {"label": "GPT Image 1 (OpenAI)",    "provider": "openai"},
     "dall-e-3":                   {"label": "DALL-E 3 (OpenAI)",       "provider": "openai"},
-    "gemini-2.0-flash-preview-image-generation": {"label": "Gemini 2.0 Flash (Google)", "provider": "google"},
+    "gemini-2.5-flash-image": {"label": "Gemini 2.5 Flash (Google)", "provider": "google"},
 }
 
 # Module-level singleton
