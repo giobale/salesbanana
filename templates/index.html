@@ -461,6 +461,59 @@
     }
   });
 
+  // Convert pasted HTML to structured plain text preserving bullets and indentation
+  briefEl.addEventListener('paste', function (e) {
+    const html = e.clipboardData.getData('text/html');
+    if (!html) return; // no HTML on clipboard, let default plain-text paste happen
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    function walk(node, depth) {
+      let result = '';
+      for (const child of node.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          result += child.textContent;
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          const tag = child.tagName;
+          if (tag === 'BR') {
+            result += '\n';
+          } else if (tag === 'LI') {
+            const indent = '  '.repeat(Math.max(0, depth - 1));
+            const bullet = child.parentElement && child.parentElement.tagName === 'OL'
+              ? (Array.from(child.parentElement.children).indexOf(child) + 1) + '. '
+              : '- ';
+            result += indent + bullet + walk(child, depth).trim() + '\n';
+          } else if (tag === 'UL' || tag === 'OL') {
+            result += walk(child, depth + 1);
+          } else if (/^H[1-6]$/.test(tag)) {
+            result += walk(child, depth).trim() + '\n';
+          } else if (['P', 'DIV', 'BLOCKQUOTE', 'SECTION', 'ARTICLE'].includes(tag)) {
+            const inner = walk(child, depth).trim();
+            if (inner) result += inner + '\n';
+          } else {
+            result += walk(child, depth);
+          }
+        }
+      }
+      return result;
+    }
+
+    const text = walk(doc.body, 0).replace(/\n{3,}/g, '\n\n').trim();
+
+    // Only use our conversion if it actually preserved more structure than the plain text
+    const plain = e.clipboardData.getData('text/plain') || '';
+    if (text.length === 0 || text === plain.trim()) return;
+
+    e.preventDefault();
+    const start = briefEl.selectionStart;
+    const end = briefEl.selectionEnd;
+    const before = briefEl.value.slice(0, start);
+    const after = briefEl.value.slice(end);
+    briefEl.value = before + text + after;
+    briefEl.selectionStart = briefEl.selectionEnd = start + text.length;
+    briefEl.dispatchEvent(new Event('input'));
+  });
+
   briefEl.focus();
 })();
 </script>

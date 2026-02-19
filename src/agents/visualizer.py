@@ -44,7 +44,7 @@ def _generate_openai(model: str, prompt: str) -> bytes:
 
     response = client.images.generate(**kwargs)
     image_base64 = response.data[0].b64_json
-    return base64.b64decode(image_base64)
+    return normalize_to_png(base64.b64decode(image_base64))
 
 
 def _generate_google(model: str, prompt: str) -> bytes:
