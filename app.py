@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="SalesBanana")
 
 # Serve generated images from output directory
+settings.output_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/output", StaticFiles(directory=str(settings.output_dir)), name="output")
 
 templates = Jinja2Templates(directory="templates")
