@@ -1,0 +1,3 @@
+# F: C. Lines & Arrows
+
+#### **C. Lines & Arrows** *Design Philosophy: Line style dictates flow type.* **Connector Styles** * **Orthogonal / Elbow (Right Angles):** Most papers use this for ** Network Architectures** (implies precision, matrices, and tensors). * **Curved / Bezier:** Common choices include this for **System Logic, Feedback Loops, or High-Level Data Flow** (implies narrative and connection). **Line Semantics** * **Solid Black/Grey:** Standard data flow (Forward pass). * **Dashed Lines:** Universally recognized as "Auxiliary Flow." * *Used for:* Gradient updates, Skip connections, or Loss calculations. * **Integrated Math:** Standard operators ($\oplus$ for Add, $\otimes$ for Concat/Multiply) are frequently placed *directly* on the line or intersection.

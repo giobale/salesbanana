@@ -6,6 +6,42 @@ SalesBanana is a text-to-infographic generation system for business consulting. 
 
 The system uses **in-context learning only** — no model training occurs. A curated reference set teaches a VLM how to structure and style diagrams at inference time.
 
+## Using the research paper ground knowledge
+
+Research paper ground knowledge lives in:
+- `docs/research-paper-ground-knowladge/` (same contents as `paperbanana_directory/`)
+- Primary index: `docs/research-paper-ground-knowladge/manifest.json`
+
+### Non-negotiable rule: paper first, product second
+When implementing or modifying the pipeline:
+1) **Paper-grounding pass (must do first)**
+   - Open `manifest.json`
+   - Select at most **3 relevant files**
+   - Read and extract the **paper-spec**: inputs/outputs, algorithm steps, constraints, failure modes, hyperparameters
+   - Cite decisions with `filename + anchor` when available
+
+2) **Business adaptation pass (must do second)**
+   - Propose **commercial customizations** (branding controls, template constraints, latency/cost tradeoffs, UX considerations, guardrails)
+   - Clearly label what is:
+     - **Paper-derived** (with citations)
+     - **Product decision / assumption** (no citation, explain rationale)
+
+### Default retrieval behavior
+- Prefer Markdown in:
+  - `docs/research-paper-ground-knowladge/sections/`
+  - `docs/research-paper-ground-knowladge/appendix/`
+- Use `docs/research-paper-ground-knowladge/original/` HTML only for figures/tables.
+
+### Search workflow (no embeddings required)
+- Start with ripgrep to route quickly:
+  - `rg -n "keyword|synonym" docs/research-paper-ground-knowladge/sections docs/research-paper-ground-knowladge/appendix`
+- Then open the best-matching file(s) and read surrounding headings.
+
+### Stop condition
+If the paper does not specify a needed detail:
+- Say: **"Not specified in the paper."**
+- Propose a sensible assumption and label it as a **product decision**.
+
 ## Architecture — Four Agents, One Pipeline
 
 ```

@@ -1,0 +1,3 @@
+# 8. Conclusion
+
+8. Conclusion This paper introduces PaperBanana, an agentic framework designed to automate the generation of publication-ready academic illustrations. By orchestrating specialized agents—Retriever, Planner, Stylist, Visualizer, and Critic—our approach transforms scientiﬁc content into high-ﬁdelity methodology diagrams and statistical plots. To facilitate rigorous evaluation, we presented PaperBananaBench, a comprehensive benchmark curated from top-tier AI conferences. Extensive experiments demonstrate that PaperBanana signiﬁcantly outperforms existing baselines in faithfulness, conciseness, readability, and aesthetics, paving the way for AI scientists to autonomously communicate their discoveries with professional-grade visualizations.
