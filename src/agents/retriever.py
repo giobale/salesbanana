@@ -17,6 +17,7 @@ VALID_CATEGORIES = {
     "canvas",
     "comparison-cards",
     "matrix",
+    "wheel",
     "concept-explainer",
 }
 

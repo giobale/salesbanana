@@ -96,6 +96,8 @@ def generate_diagram(
             image_bytes=image_bytes,
             brief=brief,
             description=current_description,
+            current_round=round_num,
+            max_rounds=rounds,
         )
 
         if critique.approved:
