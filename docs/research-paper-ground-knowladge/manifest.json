@@ -1,0 +1,127 @@
+{
+  "paper": "PaperBanana: Automating Academic Illustration for AI Scientists",
+  "source_html": "original/PaperBanana-text-to-illustrations.html",
+  "sections": [
+    {
+      "id": "00_front_matter",
+      "title": "Front matter (title, authors, abstract)",
+      "path": "sections/00_front_matter.md"
+    },
+    {
+      "id": "01_introduction",
+      "title": "1. Introduction",
+      "path": "sections/01_introduction.md"
+    },
+    {
+      "id": "02_task_formulation",
+      "title": "2. Task Formulation",
+      "path": "sections/02_task_formulation.md"
+    },
+    {
+      "id": "03_methodology",
+      "title": "3. Methodology",
+      "path": "sections/03_methodology.md"
+    },
+    {
+      "id": "04_benchmark_construction",
+      "title": "4. Benchmark Construction",
+      "path": "sections/04_benchmark_construction.md"
+    },
+    {
+      "id": "05_experiments",
+      "title": "5. Experiments",
+      "path": "sections/05_experiments.md"
+    },
+    {
+      "id": "06_discussion",
+      "title": "6. Discussion",
+      "path": "sections/06_discussion.md"
+    },
+    {
+      "id": "07_related_work",
+      "title": "7. Related Work",
+      "path": "sections/07_related_work.md"
+    },
+    {
+      "id": "08_conclusion",
+      "title": "8. Conclusion",
+      "path": "sections/08_conclusion.md"
+    },
+    {
+      "id": "09_limitations_future",
+      "title": "9. Limitations and Future Directions",
+      "path": "sections/09_limitations_future.md"
+    },
+    {
+      "id": "10_references",
+      "title": "References",
+      "path": "sections/10_references.md"
+    }
+  ],
+  "appendix": [
+    {
+      "id": "A_case_studies",
+      "title": "A: Dedicated Case Studies",
+      "path": "appendix/A_case_studies.md"
+    },
+    {
+      "id": "B_human_evaluation_setup",
+      "title": "B: Human Evaluation Setup",
+      "path": "appendix/B_human_evaluation_setup.md"
+    },
+    {
+      "id": "C_implementation_details",
+      "title": "C: Implementation Details",
+      "path": "appendix/C_implementation_details.md"
+    },
+    {
+      "id": "D_testset_curation_stat_plots",
+      "title": "D: Testset Curation for Statistical Plots Generation",
+      "path": "appendix/D_testset_curation_stat_plots.md"
+    },
+    {
+      "id": "E_textual_description_method_diagram",
+      "title": "E: Textual Description of our Methodology Diagram",
+      "path": "appendix/E_textual_description_method_diagram.md"
+    },
+    {
+      "id": "F_overview",
+      "title": "F: Overview",
+      "path": "appendix/F_style_guide/F_overview.md"
+    },
+    {
+      "id": "F_A_color_palettes",
+      "title": "F: A. Color Palettes",
+      "path": "appendix/F_style_guide/F_A_color_palettes.md"
+    },
+    {
+      "id": "F_B_shapes_containers",
+      "title": "F: B. Shapes & Containers",
+      "path": "appendix/F_style_guide/F_B_shapes_containers.md"
+    },
+    {
+      "id": "F_C_lines_arrows",
+      "title": "F: C. Lines & Arrows",
+      "path": "appendix/F_style_guide/F_C_lines_arrows.md"
+    },
+    {
+      "id": "F_D_typography_icons",
+      "title": "F: D. Typography & Icons",
+      "path": "appendix/F_style_guide/F_D_typography_icons.md"
+    },
+    {
+      "id": "G_system_prompts_agents",
+      "title": "G: System Prompts for Agents in PaperBanana",
+      "path": "appendix/G_system_prompts_agents.md"
+    },
+    {
+      "id": "H_evaluation_prompts",
+      "title": "H: Evaluation Prompts for Methodology Diagrams",
+      "path": "appendix/H_evaluation_prompts.md"
+    }
+  ],
+  "notes": {
+    "extraction": "Text extracted from HTML produced by pdf2htmlEX; figures/absolute layout not preserved in .md sections.",
+    "page_markers": "[[PAGE n]] markers indicate original PDF page boundaries."
+  }
+}
