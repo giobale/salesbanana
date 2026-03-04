@@ -177,6 +177,13 @@
       transform: none;
     }
 
+    .btn-secondary {
+      background: var(--gray-bg);
+      color: var(--dark);
+    }
+
+    .btn-secondary:hover { background: var(--gray-light); }
+
     .shortcut {
       font-size: 11px;
       opacity: 0.7;
@@ -280,6 +287,128 @@
       justify-content: flex-end;
       margin-top: 20px;
     }
+
+    /* ── Improvement section ──────────────────── */
+
+    .improve-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-light);
+    }
+
+    .improve-section label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--dark);
+    }
+
+    .improve-textarea {
+      min-height: 80px;
+    }
+
+    .improve-btn-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    /* ── Improvement loading ─────────────────── */
+
+    .improve-loading {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--primary-light);
+      border-radius: 10px;
+    }
+
+    .improve-loading.active { display: flex; }
+
+    .spinner-small {
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(108, 99, 255, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .improve-loading span {
+      font-size: 13px;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    /* ── Improvement history ─────────────────── */
+
+    .improve-history {
+      margin-top: 20px;
+    }
+
+    .improve-history h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-light);
+    }
+
+    .history-item:last-child { border-bottom: none; }
+
+    .history-number {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .history-thumb {
+      width: 48px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--gray-light);
+      flex-shrink: 0;
+    }
+
+    .history-summary {
+      font-size: 13px;
+      color: var(--dark);
+      flex: 1;
+    }
+
+    .history-status {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .history-status.approved { background: #ECFDF5; color: #059669; }
+    .history-status.not-approved { background: #FEF3C7; color: #D97706; }
 
     /* ── Error ────────────────────────────────── */
 
@@ -478,8 +607,29 @@
       <span class="badge" id="badge-rounds"></span>
       <span class="badge" id="badge-approved"></span>
     </div>
-    <div class="result-actions">
-      <button id="btn-again" class="btn btn-primary" type="button">Generate Another</button>
+
+    <!-- Improvement section -->
+    <div class="improve-section">
+      <label for="improve-input">Improve this diagram</label>
+      <textarea id="improve-input" class="improve-textarea" placeholder="Describe what you'd like to change..."></textarea>
+      <div id="improve-error" class="error-box"></div>
+      <div class="improve-loading" id="improve-loading">
+        <div class="spinner-small"></div>
+        <span>Applying improvement...</span>
+      </div>
+      <div class="improve-btn-row">
+        <button id="btn-again" class="btn btn-secondary" type="button">Generate Another</button>
+        <button id="btn-improve" class="btn btn-primary" type="button">
+          Improve
+          <span class="shortcut">&#8984;&#9166;</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Improvement history -->
+    <div id="improve-history" class="improve-history hidden">
+      <h3>Improvement History</h3>
+      <div id="history-list"></div>
     </div>
   </div>
 </main>
@@ -493,11 +643,22 @@
   const modelEl      = document.getElementById('image-model');
   const btnGenerate  = document.getElementById('btn-generate');
   const btnAgain     = document.getElementById('btn-again');
+  const btnImprove   = document.getElementById('btn-improve');
   const errorBox     = document.getElementById('error');
   const stepText     = document.getElementById('step-text');
   const resultImg    = document.getElementById('result-img');
   const badgeRounds  = document.getElementById('badge-rounds');
   const badgeApproved = document.getElementById('badge-approved');
+  const improveInput = document.getElementById('improve-input');
+  const improveError = document.getElementById('improve-error');
+  const improveLoading = document.getElementById('improve-loading');
+  const improveHistory = document.getElementById('improve-history');
+  const historyList  = document.getElementById('history-list');
+
+  // State
+  let currentRunDir = null;
+  let improvementHistory = [];
+  let isImproving = false;
 
   // Category templates — guide users on what content to provide per element
   var categoryTemplates = {
@@ -639,6 +800,58 @@
     if (stepInterval) { clearInterval(stepInterval); stepInterval = null; }
   }
 
+  function renderHistory() {
+    if (improvementHistory.length === 0) {
+      hide(improveHistory);
+      return;
+    }
+    show(improveHistory);
+    historyList.innerHTML = '';
+    improvementHistory.forEach(function (item) {
+      var div = document.createElement('div');
+      div.className = 'history-item';
+
+      var imageUrl = '/output/' + currentRunDir.split('/output/')[1] + '/' + item.image_filename;
+
+      var numEl = document.createElement('span');
+      numEl.className = 'history-number';
+      numEl.textContent = item.round_number;
+
+      var img = document.createElement('img');
+      img.className = 'history-thumb';
+      img.src = imageUrl;
+      img.alt = 'Round ' + item.round_number;
+
+      var summaryEl = document.createElement('span');
+      summaryEl.className = 'history-summary';
+      summaryEl.textContent = item.summary;
+
+      var statusEl = document.createElement('span');
+      statusEl.className = 'history-status ' + (item.approved ? 'approved' : 'not-approved');
+      statusEl.textContent = item.approved ? 'Approved' : 'Not approved';
+
+      div.appendChild(numEl);
+      div.appendChild(img);
+      div.appendChild(summaryEl);
+      div.appendChild(statusEl);
+
+      historyList.appendChild(div);
+    });
+  }
+
+  function showResult(imageUrl, roundsText, approved, runDir) {
+    resultImg.src = imageUrl + '?t=' + Date.now();
+    badgeRounds.textContent = roundsText;
+    badgeApproved.textContent = approved ? 'Approved' : 'Max rounds reached';
+    badgeApproved.className = 'badge ' + (approved ? 'approved' : 'not-approved');
+    currentRunDir = runDir;
+
+    stopStepProgress();
+    hide(stateLoading);
+    show(stateResult);
+    improveInput.focus();
+  }
+
   async function generate() {
     const brief = briefEl.value.trim();
     if (!brief) {
@@ -653,13 +866,19 @@
     show(stateLoading);
     startStepProgress();
 
+    // Reset improvement state
+    currentRunDir = null;
+    improvementHistory = [];
+    hide(improveHistory);
+    historyList.innerHTML = '';
+    improveInput.value = '';
+
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brief: selectedCategory ? '[' + selectedCategory + '] ' + brief : brief,
-          slide_format: formatEl.value,
           image_model: modelEl.value,
         }),
       });
@@ -670,17 +889,8 @@
         throw new Error(data.error || 'Generation failed.');
       }
 
-      // Show result
-      resultImg.src = data.image_url;
-      badgeRounds.textContent = data.rounds_taken === 1
-        ? '1 round'
-        : data.rounds_taken + ' rounds';
-      badgeApproved.textContent = data.approved ? 'Approved' : 'Max rounds reached';
-      badgeApproved.className = 'badge ' + (data.approved ? 'approved' : 'not-approved');
-
-      stopStepProgress();
-      hide(stateLoading);
-      show(stateResult);
+      var roundsText = data.rounds_taken === 1 ? '1 round' : data.rounds_taken + ' rounds';
+      showResult(data.image_url, roundsText, data.approved, data.run_dir);
 
     } catch (err) {
       stopStepProgress();
@@ -691,7 +901,71 @@
     }
   }
 
+  async function improve() {
+    var instruction = improveInput.value.trim();
+    if (!instruction) {
+      improveError.textContent = 'Please describe what you\'d like to change.';
+      improveError.style.display = 'block';
+      improveInput.focus();
+      return;
+    }
+
+    if (!currentRunDir) {
+      improveError.textContent = 'No diagram to improve. Generate one first.';
+      improveError.style.display = 'block';
+      return;
+    }
+
+    improveError.style.display = 'none';
+    isImproving = true;
+    btnImprove.disabled = true;
+    improveLoading.classList.add('active');
+
+    try {
+      var res = await fetch('/api/improve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          run_dir: currentRunDir,
+          instruction: instruction,
+          image_model: modelEl.value,
+        }),
+      });
+
+      var data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Improvement failed.');
+      }
+
+      // Update image
+      resultImg.src = data.image_url + '?t=' + Date.now();
+
+      // Update badges
+      var totalRounds = data.history.length;
+      badgeRounds.textContent = totalRounds + (totalRounds === 1 ? ' improvement' : ' improvements');
+      badgeApproved.textContent = data.approved ? 'Approved' : 'Not approved';
+      badgeApproved.className = 'badge ' + (data.approved ? 'approved' : 'not-approved');
+
+      // Update history
+      improvementHistory = data.history;
+      renderHistory();
+
+      // Clear input
+      improveInput.value = '';
+
+    } catch (err) {
+      improveError.textContent = err.message;
+      improveError.style.display = 'block';
+    } finally {
+      isImproving = false;
+      btnImprove.disabled = false;
+      improveLoading.classList.remove('active');
+    }
+  }
+
   btnGenerate.addEventListener('click', generate);
+  btnImprove.addEventListener('click', improve);
 
   btnAgain.addEventListener('click', function () {
     briefEl.value = '';
@@ -699,7 +973,12 @@
     selectedCategory = null;
     lastTemplateValue = null;
     chips.forEach(function (c) { c.classList.remove('selected'); });
+    currentRunDir = null;
+    improvementHistory = [];
+    improveInput.value = '';
     hide(stateResult);
+    hide(improveHistory);
+    historyList.innerHTML = '';
     show(stateInput);
     briefEl.focus();
   });
@@ -707,9 +986,11 @@
   // Cmd+Enter / Ctrl+Enter shortcut
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
       if (!stateInput.classList.contains('hidden')) {
-        e.preventDefault();
         generate();
+      } else if (!stateResult.classList.contains('hidden') && !isImproving) {
+        improve();
       }
     }
   });

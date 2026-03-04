@@ -287,3 +287,98 @@ critic: |
   RESPONSE FORMAT (strict JSON):
   Respond with ONLY a JSON object in this exact structure:
   {{"critic_suggestions": "<your detailed critique or APPROVED>", "revised_description": "<full revised description or No changes needed>"}}
+
+improvement_summary: |
+  Summarize the following user instruction for a diagram improvement in ONE
+  sentence of at most 15 words. Focus on WHAT changed, not why.
+
+  User instruction:
+  {instruction}
+
+  Respond with ONLY the summary sentence. No quotes, no explanation.
+
+improvement_merge: |
+  CONTEXT:
+  You are merging a user's improvement instruction into an existing styled
+  diagram description. The description was previously used to generate an
+  image. The user wants specific changes while keeping everything else intact.
+
+  RULES:
+  1. Modify ONLY what the user explicitly asked to change.
+  2. Preserve ALL other elements, styling, layout, and wording exactly.
+  3. Output the COMPLETE updated description — not just the diff.
+  4. Keep the same prose format (no bullets, no headings).
+  5. If the instruction explicitly requests a visual change (e.g., a specific
+     color or font), apply it. Do not infer or extend style changes beyond
+     what is explicitly stated.
+
+  CURRENT DESCRIPTION:
+  {description}
+
+  IMPROVEMENT HISTORY (previous changes for context):
+  {history}
+
+  USER INSTRUCTION:
+  {instruction}
+
+  OUTPUT:
+  The complete updated description with the requested changes applied.
+
+critic_improvement: |
+  CONTEXT:
+  You are evaluating a user-requested improvement to an existing diagram.
+  The user asked for a specific change. You must verify the change was
+  implemented correctly AND that nothing else regressed.
+
+  Two images are attached:
+  - IMAGE 1: The NEW image (after improvement)
+  - IMAGE 2: The PREVIOUS image (before improvement)
+
+  ORIGINAL BRIEF:
+  {brief}
+
+  DESCRIPTION USED FOR GENERATION:
+  {description}
+
+  USER'S IMPROVEMENT INSTRUCTION:
+  {instruction}
+
+  EVALUATION DIMENSIONS (in priority order):
+
+  P0 — INSTRUCTION COMPLIANCE:
+  Did the image implement the user's specific request? Check every detail
+  of the instruction against the rendered result.
+
+  P1 — REGRESSION CHECK:
+  Compare the new image against the previous image. Was anything broken,
+  removed, or degraded that the user did NOT ask to change? Elements,
+  labels, connections, and styling should be preserved unless the user
+  explicitly requested a change.
+
+  P2 — FAITHFULNESS:
+  Are ALL components from the original brief still present and correctly
+  represented?
+
+  P3 — READABILITY:
+  Are all labels legible and correctly spelled? Is the flow unambiguous?
+
+  TEXT QUALITY CHECK:
+  Inspect every text label for: misspellings, garbled characters, truncated
+  words, overlapping text, nonsensical labels, or duplicated text.
+
+  GENERATION FAILURE CHECK:
+  If the image is blank, corrupted, or contains a system error notice,
+  do NOT approve. Simplify the description in your revision.
+
+  DECISION RULES:
+  - ALL dimensions pass: set critic_suggestions to "APPROVED".
+  - ANY dimension fails: provide a targeted revision.
+
+  REVISION RULES (when not approved):
+  - Base revision on the EXISTING description with targeted fixes.
+  - Be maximally specific: exact element names, positions, corrections.
+  - Vague feedback is forbidden.
+  - Do not alter styling unless it causes a readability failure.
+
+  RESPONSE FORMAT (strict JSON):
+  {{"critic_suggestions": "<your detailed critique or APPROVED>", "revised_description": "<full revised description or No changes needed>"}}

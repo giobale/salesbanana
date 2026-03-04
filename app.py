@@ -8,8 +8,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from pathlib import Path
+
 from src.config import IMAGE_MODELS, settings
-from src.pipeline import generate_diagram
+from src.pipeline import generate_diagram, improve_diagram
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -65,4 +67,56 @@ async def api_generate(request: Request):
         "rounds_taken": result.rounds_taken,
         "approved": result.approved,
         "run_dir": str(result.run_dir),
+    }
+
+
+@app.post("/api/improve")
+async def api_improve(request: Request):
+    body = await request.json()
+    run_dir_str = body.get("run_dir", "").strip()
+    instruction = body.get("instruction", "").strip()
+    image_model = body.get("image_model")
+
+    if not run_dir_str:
+        return JSONResponse({"error": "run_dir is required."}, status_code=400)
+    if not instruction:
+        return JSONResponse({"error": "Improvement instruction is required."}, status_code=400)
+    if image_model and image_model not in IMAGE_MODELS:
+        return JSONResponse({"error": f"Unknown image model: {image_model}"}, status_code=400)
+
+    run_dir = Path(run_dir_str).resolve()
+    try:
+        run_dir.relative_to(settings.output_dir.resolve())
+    except ValueError:
+        return JSONResponse({"error": "Invalid run directory."}, status_code=400)
+
+    try:
+        result = await asyncio.to_thread(
+            improve_diagram, run_dir, instruction, image_model=image_model,
+        )
+    except FileNotFoundError as e:
+        return JSONResponse({"error": str(e)}, status_code=404)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception:
+        logger.exception("Improvement failed")
+        return JSONResponse({"error": "Improvement failed. Check server logs."}, status_code=500)
+
+    image_rel = result.image_path.relative_to(settings.output_dir)
+    image_url = f"/output/{image_rel}"
+
+    return {
+        "image_url": image_url,
+        "round_number": result.round_number,
+        "summary": result.summary,
+        "approved": result.approved,
+        "history": [
+            {
+                "round_number": r.round_number,
+                "summary": r.summary,
+                "image_filename": r.image_filename,
+                "approved": r.approved,
+            }
+            for r in result.history
+        ],
     }

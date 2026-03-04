@@ -7,9 +7,10 @@ from datetime import datetime
 from pathlib import Path
 
 from src.agents import critic, planner, retriever, stylist, visualizer
-from src.config import settings
-from src.models import PipelineResult, RunMetadata
+from src.config import client, settings
+from src.models import ImprovementResult, ImprovementRound, PipelineResult, RunMetadata
 from src.utils.image_utils import save_image
+from src.utils.prompt_loader import get_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,9 @@ def generate_diagram(
             rounds,
         )
 
+    # Save the description that produced the final image
+    _save_text(run_dir, "04_final_description.md", current_description)
+
     # ── Save final outputs ────────────────────────────────────────────
 
     final_path = save_image(final_image_bytes, run_dir / "final.png")
@@ -148,5 +152,218 @@ def generate_diagram(
         image_path=final_path,
         rounds_taken=rounds_taken,
         approved=approved,
+        run_dir=run_dir,
+    )
+
+
+# ── Improvement Loop ──────────────────────────────────────────────────
+
+
+_MAX_HISTORY_IN_PROMPT = 10
+
+
+def _load_improvements(run_dir: Path) -> list[ImprovementRound]:
+    """Load existing improvement history from run_dir, or return empty list."""
+    path = run_dir / "improvements.json"
+    if not path.exists():
+        return []
+    with open(path) as f:
+        return [ImprovementRound(**r) for r in json.loads(f.read())]
+
+
+def _save_improvements(run_dir: Path, history: list[ImprovementRound]) -> None:
+    """Persist the full improvement history to improvements.json."""
+    data = [r.model_dump() for r in history]
+    _save_text(run_dir, "improvements.json", json.dumps(data, indent=2))
+
+
+def _get_last_description(run_dir: Path, history: list[ImprovementRound]) -> str:
+    """Get the description that produced the most recent image."""
+    if history:
+        last = history[-1]
+        path = run_dir / f"05_improvement_{last.round_number}_description.md"
+        return path.read_text()
+    return (run_dir / "04_final_description.md").read_text()
+
+
+def _get_last_image_bytes(run_dir: Path, history: list[ImprovementRound]) -> bytes:
+    """Get the bytes of the most recent image."""
+    if history:
+        last = history[-1]
+        path = run_dir / last.image_filename
+    else:
+        path = run_dir / "final.png"
+    return path.read_bytes()
+
+
+def _format_history_for_prompt(history: list[ImprovementRound]) -> str:
+    """Format improvement history as numbered text for LLM context."""
+    if not history:
+        return "No previous improvements."
+    recent = history[-_MAX_HISTORY_IN_PROMPT:]
+    lines = []
+    for r in recent:
+        lines.append(f"#{r.round_number}: {r.summary}")
+    return "\n".join(lines)
+
+
+def _generate_summary(instruction: str) -> str:
+    """Generate a 1-sentence summary of a user improvement instruction."""
+    prompt = get_prompt("improvement_summary", instruction=instruction)
+    response = client.chat.completions.create(
+        model=settings.llm_model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+        max_tokens=50,
+    )
+    return response.choices[0].message.content.strip()
+
+
+def _merge_description(description: str, instruction: str, history_text: str) -> str:
+    """Merge a user instruction into the existing styled description."""
+    prompt = get_prompt(
+        "improvement_merge",
+        description=description,
+        instruction=instruction,
+        history=history_text,
+    )
+    response = client.chat.completions.create(
+        model=settings.llm_model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=4000,
+    )
+    return response.choices[0].message.content.strip()
+
+
+def improve_diagram(
+    run_dir: Path,
+    instruction: str,
+    image_model: str | None = None,
+) -> ImprovementResult:
+    """
+    Apply a user-driven improvement to an existing diagram.
+
+    Loads context from the run directory, merges the instruction into the
+    description, generates a new image via edit, and evaluates with the critic.
+
+    Args:
+        run_dir: Path to the existing run's output directory.
+        instruction: Natural-language description of the desired change.
+        image_model: Override image model (default: from run metadata or settings).
+
+    Returns:
+        ImprovementResult with the new image and updated history.
+    """
+    # Validate run_dir is under output_dir
+    try:
+        run_dir.resolve().relative_to(settings.output_dir.resolve())
+    except ValueError:
+        raise ValueError(f"Invalid run directory: {run_dir}")
+
+    if not run_dir.exists():
+        raise FileNotFoundError(f"Run directory not found: {run_dir}")
+
+    logger.info("=== Improvement started === Run dir: %s", run_dir)
+
+    # Load context
+    metadata_path = run_dir / "run_metadata.json"
+    with open(metadata_path) as f:
+        run_meta = json.loads(f.read())
+    brief = run_meta["brief"]
+
+    history = _load_improvements(run_dir)
+    last_description = _get_last_description(run_dir, history)
+    last_image_bytes = _get_last_image_bytes(run_dir, history)
+    round_number = len(history) + 1
+
+    logger.info("Improvement round %d, instruction: %s", round_number, instruction[:80])
+
+    # Generate summary
+    summary = _generate_summary(instruction)
+    logger.info("Summary: %s", summary)
+
+    # Merge instruction into description
+    history_text = _format_history_for_prompt(history)
+    merged_description = _merge_description(last_description, instruction, history_text)
+    logger.info("Description merged (%d words)", len(merged_description.split()))
+
+    # Generate improved image
+    logger.info("--- Improvement %d: Visualizer (edit) ---", round_number)
+    new_image_bytes = visualizer.edit_image(
+        merged_description, last_image_bytes, image_model=image_model
+    )
+
+    # Critic evaluation
+    logger.info("--- Improvement %d: Critic ---", round_number)
+    critique = critic.evaluate_improvement(
+        image_bytes=new_image_bytes,
+        previous_image_bytes=last_image_bytes,
+        brief=brief,
+        description=merged_description,
+        instruction=instruction,
+    )
+
+    current_description = merged_description
+    approved = critique.approved
+
+    # One auto-retry if critic rejects
+    if not approved and critique.refined_description:
+        logger.info("--- Improvement %d: Auto-retry with critic revision ---", round_number)
+        current_description = critique.refined_description
+        new_image_bytes = visualizer.edit_image(
+            current_description, last_image_bytes, image_model=image_model
+        )
+        retry_critique = critic.evaluate_improvement(
+            image_bytes=new_image_bytes,
+            previous_image_bytes=last_image_bytes,
+            brief=brief,
+            description=current_description,
+            instruction=instruction,
+        )
+        approved = retry_critique.approved
+        critique = retry_critique
+
+    # Save artifacts
+    final_image_bytes = new_image_bytes
+    img_filename = f"05_improvement_{round_number}_image.png"
+    save_image(new_image_bytes, run_dir / img_filename)
+    _save_text(run_dir, f"05_improvement_{round_number}_description.md", current_description)
+    _save_text(
+        run_dir,
+        f"05_improvement_{round_number}_critique.md",
+        "APPROVED" if approved else (critique.feedback_summary or ""),
+    )
+
+    # Update final.png
+    save_image(final_image_bytes, run_dir / "final.png")
+
+    # Record this round
+    improvement = ImprovementRound(
+        round_number=round_number,
+        user_instruction=instruction,
+        summary=summary,
+        description_used=current_description,
+        approved=approved,
+        critic_feedback=critique.feedback_summary if not approved else None,
+        image_filename=img_filename,
+        timestamp=datetime.now().isoformat(),
+    )
+    history.append(improvement)
+    _save_improvements(run_dir, history)
+
+    logger.info(
+        "=== Improvement %d completed === Approved: %s",
+        round_number,
+        approved,
+    )
+
+    return ImprovementResult(
+        image_bytes=final_image_bytes,
+        image_path=run_dir / "final.png",
+        round_number=round_number,
+        summary=summary,
+        approved=approved,
+        history=history,
         run_dir=run_dir,
     )
