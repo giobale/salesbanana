@@ -9,7 +9,7 @@ class Reference(BaseModel):
     """A single reference diagram from the references/ directory."""
 
     id: str
-    file: str  # Relative path within references/ (e.g. "images/pipeline_dlt.png")
+    file: str  # Relative path within references/ (e.g. "images/pipeline/rag_pipeline_explainer.png")
     category: str
     description: str
     tags: list[str] = Field(default_factory=list)

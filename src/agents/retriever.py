@@ -18,7 +18,11 @@ VALID_CATEGORIES = {
     "comparison-cards",
     "matrix",
     "wheel",
-    "concept-explainer",
+
+    "venn",
+
+    "funnel",
+    "pyramid",
 }
 
 

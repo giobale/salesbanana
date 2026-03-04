@@ -29,9 +29,23 @@ retriever_classify: |
   - wheel: Pinwheel or hub-and-spoke arrangement. A central connecting
     shape (organic, circular, or radial) links 3–6 peripheral nodes in a
     symmetric layout. No linear flow — nodes are peers around a centre.
-  - concept-explainer: Single focal diagram in the centre with a definition
-    box and a takeaway/insight box below. Teaches one concept to a
-    non-specialist audience.
+- venn: Overlapping circles (2–4) where shared intersection zones carry
+    meaning. Each circle represents an equal peer element. No directional
+    flow — the layout emphasises shared relationships and mutual overlap.
+    Typically 2–4 circles with a central intersection.
+  - funnel: Tapering shape (vertical or horizontal) encoding progressive
+    narrowing or convergence. Stacked layers decrease in width from entry
+    to exit. Each layer is a self-contained stage with a label. Vertical
+    funnels taper top-to-bottom; horizontal funnels taper left-to-right.
+    May include entry arrows at the wide end and an exit arrow at the
+    narrow end. Typically 3–5 layers.
+  - pyramid: Triangular shape divided into horizontal layers stacked from
+    a narrow apex at the top to a wide base at the bottom. Encodes
+    hierarchical ranking — topmost layer is highest priority or most
+    refined; bottom layer is the broadest foundation. Each layer contains
+    a label. Description text and icons typically flank the pyramid on
+    alternating sides. Typically 3–6 layers. No directional arrows —
+    the triangular shape implies hierarchy.
 
   AMBIGUITY RULE:
   If the request could map to two categories, choose the one whose spatial
@@ -191,8 +205,9 @@ visualizer_system: |
     or reinterpret any element.
   - Do not include figure titles, slide numbers, captions, or watermarks
     in the image.
-  - Output format: wide horizontal 16:9 landscape image.
-  - White background.
+  - Output format: wide horizontal, I will let you decide the exact
+    dimensions based on the content and knowing it will be used in a
+    presentation slide.
 
 critic: |
   CONTEXT:

@@ -42,14 +42,18 @@ If the paper does not specify a needed detail:
 - Say: **"Not specified in the paper."**
 - Propose a sensible assumption and label it as a **product decision**.
 
-## Architecture — Four Agents, One Pipeline
+## Architecture — Five Agents, One Pipeline
 
 ```
-User Input → Retriever → Planner → Coder → Stylist → Final Output
-                ↑             ↑                          ↑
-            refs.json     selected refs            style_guide.md
-           (text only)     (with images)          (visual rules)
+User Input → Retriever → Planner → Stylist → Visualizer ⇄ Critic → Final Output
+                ↑             ↑         ↑                      ↑
+            refs.json     selected  style_guide.md        brief + description
+           (text only)  refs + imgs  (visual rules)         + rendered image
 ```
+
+**Phase 1 — Planning** (linear): Retriever → Planner → Stylist. Each agent runs once.
+
+**Phase 2 — Refinement** (iterative): Visualizer generates an image. Critic evaluates it. If not approved, the Critic returns a revised description and the Visualizer re-renders. Loop repeats up to `MAX_REFINEMENT_ROUNDS`.
 
 Each agent has **one job**. It receives from the previous agent. It serves the next.
 
@@ -72,24 +76,44 @@ Each agent has **one job**. It receives from the previous agent. It serves the n
 - This is the **only agent that sees reference images** — it learns structural patterns from them
 - Does not retrieve, does not write code, does not apply brand styling
 
-### Coder
-
-**Objective:** Translate the Planner's specification into renderable output.
-
-- Receives: the Planner's structured layout plan
-- Produces: code (SVG, HTML, or target format) that faithfully implements the plan
-- Implements **exactly what the Planner specified** — no creative additions, no layout reinterpretation
-- Does not retrieve, does not plan, does not style
-
 ### Stylist
 
-**Objective:** Apply brand-consistent visual styling to the Coder's output.
+**Objective:** Apply brand-consistent visual styling to the Planner's structural specification.
 
-- Receives: raw rendered output from the Coder + `style_guide.md`
-- Produces: final branded infographic
+- Receives: the Planner's structural description + `style_guide.md` + diagram category
+- Produces: a fully styled description (continuous prose) optimized for the Visualizer
 - Owns **all visual decisions**: colours, typography, spacing, shape language, iconography
+- Preserves every logical element from the Planner — adds *how things look*, never changes *what things are*
 - The style guide is the Stylist's sole authority — no other agent references it
-- Does not retrieve, does not plan structure, does not rewrite code logic
+- Does not retrieve, does not plan structure, does not evaluate output
+
+### Visualizer
+
+**Objective:** Render the styled description into a consulting-grade diagram image ready for slides or proposals.
+
+- Receives: the Stylist's fully styled description (continuous prose) — this is the complete spec of what to draw
+- Produces: a rendered PNG image that faithfully implements the description
+- Owns **layout composition**: element placement for "executive scan" reading — clear hierarchy, top-left → bottom-right flow, strong grouping, whitespace
+- Owns **visual encoding**: converts abstract relationships into visual structure — sequence → arrows/steps, responsibility → labelled columns, dependency → connectors, emphasis → callouts or highlight states
+- Encoding must be **internally consistent**: same type of concept = same shape/colour treatment throughout the diagram
+- Implements **exactly what the description specifies** — no invented components, no creative additions, no layout reinterpretation
+- Every arrow must mean something; every label must be specific; no ambiguity
+- No title inside the graphic — titles belong in slide headings, not in the rendered image
+- Does not decide the business story (Planner's job), does not write style rules (Stylist's job), does not evaluate output (Critic's job)
+
+### Critic
+
+**Objective:** Evaluate the generated diagram against the original brief and description, then approve or revise.
+
+- Receives: rendered image (PNG) + original user brief + the styled description used to generate it + loop position (round *t* of *T*)
+- Produces: either `APPROVED` or a **revised description** that fixes identified issues
+- This is the **only multimodal evaluation point** — it sees the generated image alongside the text inputs
+- Evaluates four dimensions in priority order: **Faithfulness** (all requested elements present, none hallucinated) → **Readability** (labels legible, flow unambiguous) → **Conciseness** (no clutter) → **Aesthetics** (balanced layout)
+- Includes a dedicated **text quality check**: misspellings, garbled characters, truncated words, overlapping or duplicated labels
+- Includes a **generation failure check**: blank images, corruption, or error notices trigger automatic rejection with a simplified revision
+- When revising, modifies the *existing* description with targeted fixes — never rewrites from scratch
+- Revision must be **maximally specific**: exact element names, positions, corrections — vague feedback ("improve layout") is forbidden
+- Does not select references, does not plan structure, does not generate images, does not apply style independently
 
 ## Separation of Concerns
 
@@ -99,8 +123,9 @@ This is the core design constraint. Every architectural decision flows from it.
 |---|---|---|
 | Reference selection | Retriever | Choose which references enter the context |
 | Structural layout | Planner | Decide element hierarchy or flow direction |
-| Code generation | Coder | Produce or modify renderable output |
 | Visual branding | Stylist | Apply colours, fonts, spacing, or shape rules |
+| Image generation | Visualizer | Produce or modify renderable output |
+| Quality evaluation & revision | Critic | Approve output or rewrite the generation description |
 
 **If you are unsure which agent owns a behaviour, it does not belong in the one you are writing.**
 
@@ -111,7 +136,7 @@ Each reference is a metadata record with three fields that serve distinct purpos
 ```json
 {
   "id": "ref_001",
-  "file": "images/example.png",
+  "file": "images/pipeline/example.png",
   "category": "pipeline",
   "description": "Multi-source ingestion flowing from 4 parallel inputs through transformation layer into single destination",
   "tags": ["pipeline", "concept-explainer", "input-output"]
@@ -136,7 +161,7 @@ References teach **how to structure** information visually. User input provides 
 
 Encodes the complete Pyne visual identity: colour palette, typography, layout grid, shape language, iconography, connectors, card variants, and anti-patterns.
 
-**Only the Stylist reads this file.** No other agent should reference, embed, or be influenced by style guide contents. If style information appears in a Retriever prompt, a Planner specification, or Coder logic — that is a bug.
+**Only the Stylist reads this file.** No other agent should reference, embed, or be influenced by style guide contents. If style information appears in a Retriever prompt, a Planner specification, or Critic revision — that is a bug.
 
 ## Rules for Coding Agents
 
@@ -148,11 +173,17 @@ Encodes the complete Pyne visual identity: colour palette, typography, layout gr
 
 4. **Do not hardcode reference selection.** The Retriever selects references at runtime based on user input. No agent should assume which references will be available or embed specific reference IDs.
 
-5. **Do not let the Coder improvise.** The Coder implements the Planner's spec. If the spec says 3 cards, the output has 3 cards. Creative additions are the Planner's job.
+5. **Do not let the Visualizer improvise.** The Visualizer renders the styled description exactly as written. If the spec says 3 cards, the output has 3 cards. Creative additions are the Planner's job; visual styling is the Stylist's job.
 
-6. **Do not bypass the pipeline.** Every generation passes through all four stages in order. No shortcut from user input to code. No shortcut from plan to styled output.
+6. **Do not bypass the pipeline.** Every generation passes through all five agents in order. No shortcut from user input to image. No shortcut from plan to styled output. The Critic must evaluate every generated image.
 
-7. **Keep descriptions structural.** When adding references to `refs.json`, describe what you see in terms of element count, spatial arrangement, flow direction, containment, and hierarchy — never in terms of the business topic depicted.
+7. **Do not let the Critic make vague revisions.** The Critic's revised description must contain exact element names, positions, and corrections. Feedback like "improve the layout" or "make it cleaner" degrades the next generation. If the Critic cannot be specific, it should approve.
+
+8. **Do not let the Critic change the design system.** The Critic may not alter colour palettes, font choices, or brand styling unless a specific style choice directly causes a readability failure. Aesthetic consistency is the Stylist's domain.
+
+9. **Keep descriptions structural.** When adding references to `refs.json`, describe what you see in terms of element count, spatial arrangement, flow direction, containment, and hierarchy — never in terms of the business topic depicted.
+
+10. **Keep categories in sync across all three sources.** When adding a new category to `refs.json`, you **must** also add it to `VALID_CATEGORIES` in `src/agents/retriever.py` and to the `CATEGORY TAXONOMY` section in `config/prompts.yaml`. All three must list the same set of categories. A category that exists in only one or two of these locations is a bug.
 
 ## Workflow Orchestration
 
