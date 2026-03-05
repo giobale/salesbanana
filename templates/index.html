@@ -452,8 +452,6 @@
     <div class="options-row">
       <label for="image-model">Image model</label>
       <select id="image-model"></select>
-      <label for="slide-format">Output size</label>
-      <select id="slide-format"></select>
     </div>
     <div id="error" class="error-box"></div>
     <div class="btn-row">
@@ -493,7 +491,6 @@
   const stateResult  = document.getElementById('state-result');
   const briefEl      = document.getElementById('brief');
   const modelEl      = document.getElementById('image-model');
-  const formatEl     = document.getElementById('slide-format');
   const btnGenerate  = document.getElementById('btn-generate');
   const btnAgain     = document.getElementById('btn-again');
   const errorBox     = document.getElementById('error');
@@ -565,20 +562,6 @@
         opt.textContent = models[key].label;
         modelEl.appendChild(opt);
       });
-    });
-
-  // Populate slide-format dropdown from the API
-  fetch('/api/slide-formats')
-    .then(function (r) { return r.json(); })
-    .then(function (formats) {
-      Object.keys(formats).forEach(function (key) {
-        var opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = formats[key].label;
-        formatEl.appendChild(opt);
-      });
-      // Default to HD 16:9
-      formatEl.value = 'hd_16_9';
     });
 
   function show(el) { el.classList.remove('hidden'); }

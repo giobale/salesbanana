@@ -1,24 +1,11 @@
 """Central configuration loaded from .env via pydantic-settings."""
 
-from enum import Enum
 from pathlib import Path
 import logging
 
 from openai import OpenAI
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-class ImageSize(str, Enum):
-    SQUARE = "1024x1024"
-    PORTRAIT = "1024x1536"
-    LANDSCAPE = "1536x1024"
-
-
-class ImageQuality(str, Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
 
 
 # Resolve project root (parent of src/)
@@ -33,13 +20,13 @@ class Settings(BaseSettings):
 
     # API Keys
     openai_api_key: str
-    google_api_key: str | None = None
+    google_api_key: str
 
     # LLM Config
     llm_model: str = "gpt-4o"
-    image_model: str = "gpt-image-1"
-    image_size: ImageSize = ImageSize.LANDSCAPE
-    image_quality: ImageQuality = ImageQuality.HIGH
+    image_model: str = "gemini-2.5-flash-image"
+    image_aspect_ratio: str = "16:9"
+    image_resolution: str = "2K"
 
     # Pipeline Config
     max_refinement_rounds: int = Field(default=3, ge=1, le=10)
@@ -68,9 +55,8 @@ class Settings(BaseSettings):
 
 
 IMAGE_MODELS: dict[str, dict] = {
-    "gpt-image-1":                {"label": "GPT Image 1 (OpenAI)",    "provider": "openai"},
-    "dall-e-3":                   {"label": "DALL-E 3 (OpenAI)",       "provider": "openai"},
-    "gemini-2.5-flash-image": {"label": "Gemini 2.5 Flash (Google)", "provider": "google"},
+    "gemini-2.5-flash-image":         {"label": "Gemini 2.5 Flash"},
+    "gemini-3.1-flash-image-preview": {"label": "Gemini 3.1 Flash"},
 }
 
 # Module-level singleton
@@ -85,17 +71,13 @@ logging.basicConfig(
 # OpenAI client singleton
 client = OpenAI(api_key=settings.openai_api_key)
 
-# Lazy Google GenAI client
+# Google GenAI client singleton (lazy-initialised)
 _google_client = None
 
 
 def get_google_client():
     global _google_client
     if _google_client is None:
-        if not settings.google_api_key:
-            raise ValueError(
-                "GOOGLE_API_KEY is required for Gemini models. Set it in .env."
-            )
         from google import genai
         _google_client = genai.Client(api_key=settings.google_api_key)
     return _google_client

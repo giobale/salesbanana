@@ -10,7 +10,6 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import IMAGE_MODELS, settings
 from src.pipeline import generate_diagram
-from src.postprocessing import SLIDE_FORMATS
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -29,12 +28,6 @@ async def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
-@app.get("/api/slide-formats")
-async def api_slide_formats():
-    """Return available slide format presets for the UI dropdown."""
-    return SLIDE_FORMATS
-
-
 @app.get("/api/image-models")
 async def api_image_models():
     """Return available image generation models for the UI dropdown."""
@@ -45,7 +38,6 @@ async def api_image_models():
 async def api_generate(request: Request):
     body = await request.json()
     brief = body.get("brief", "").strip()
-    slide_format = body.get("slide_format", "original")
     image_model = body.get("image_model")
 
     if not brief:
@@ -56,7 +48,7 @@ async def api_generate(request: Request):
 
     try:
         result = await asyncio.to_thread(
-            generate_diagram, brief, slide_format=slide_format, image_model=image_model,
+            generate_diagram, brief, image_model=image_model,
         )
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)

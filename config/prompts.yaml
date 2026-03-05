@@ -205,9 +205,9 @@ visualizer_system: |
     or reinterpret any element.
   - Do not include figure titles, slide numbers, captions, or watermarks
     in the image.
-  - Output format: wide horizontal, I will let you decide the exact
-    dimensions based on the content and knowing it will be used in a
-    presentation slide.
+  - Fill the ENTIRE canvas edge-to-edge. Use all available space.
+    The output will be placed directly into a presentation slide —
+    leave no empty margins or unused whitespace around the diagram.
 
 critic: |
   CONTEXT:
