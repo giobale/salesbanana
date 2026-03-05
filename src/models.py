@@ -43,6 +43,33 @@ class PipelineResult(BaseModel):
     run_dir: Path  # Where intermediate files are saved
 
 
+class ImprovementRound(BaseModel):
+    """Record of a single user-driven improvement iteration."""
+
+    round_number: int
+    user_instruction: str
+    summary: str  # AI-generated 1-sentence summary
+    description_used: str  # Merged description sent to Visualizer
+    approved: bool
+    critic_feedback: str | None = None
+    image_filename: str  # Relative to run_dir
+    timestamp: str
+
+
+class ImprovementResult(BaseModel):
+    """Result returned by improve_diagram()."""
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    image_bytes: bytes
+    image_path: Path
+    round_number: int
+    summary: str
+    approved: bool
+    history: list[ImprovementRound]
+    run_dir: Path
+
+
 class RunMetadata(BaseModel):
     """Metadata about a pipeline run, saved to run_metadata.json."""
 

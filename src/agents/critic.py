@@ -102,3 +102,74 @@ def evaluate(
         refined_description=revised_desc,
         feedback_summary=summary,
     )
+
+
+def evaluate_improvement(
+    image_bytes: bytes,
+    previous_image_bytes: bytes,
+    brief: str,
+    description: str,
+    instruction: str,
+) -> CriticOutput:
+    """
+    Evaluate a user-requested improvement by comparing new vs previous image.
+
+    Sends both images for regression comparison. Uses the critic_improvement
+    prompt which prioritises instruction compliance and regression checks.
+    """
+    new_b64 = bytes_to_base64(image_bytes)
+    prev_b64 = bytes_to_base64(previous_image_bytes)
+
+    prompt_text = get_prompt(
+        "critic_improvement",
+        brief=brief,
+        description=description,
+        instruction=instruction,
+    )
+
+    content: list[dict] = [
+        {"type": "text", "text": prompt_text},
+        {
+            "type": "text",
+            "text": "IMAGE 1 — NEW (after improvement):",
+        },
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{new_b64}",
+                "detail": "high",
+            },
+        },
+        {
+            "type": "text",
+            "text": "IMAGE 2 — PREVIOUS (before improvement):",
+        },
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{prev_b64}",
+                "detail": "high",
+            },
+        },
+    ]
+
+    response = client.chat.completions.create(
+        model=settings.llm_model,
+        messages=[{"role": "user", "content": content}],
+        temperature=0.2,
+        max_tokens=3000,
+    )
+
+    result_text = response.choices[0].message.content.strip()
+    approved, revised_desc, summary = _parse_critic_response(result_text)
+
+    if approved:
+        logger.info("Critic (improvement): APPROVED")
+        return CriticOutput(approved=True, feedback_summary=summary)
+
+    logger.info("Critic (improvement): REFINEMENT NEEDED (%d words)", len(result_text.split()))
+    return CriticOutput(
+        approved=False,
+        refined_description=revised_desc,
+        feedback_summary=summary,
+    )

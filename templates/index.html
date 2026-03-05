@@ -38,7 +38,7 @@
     }
 
     header .inner {
-      max-width: 800px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 0 24px;
       display: flex;
@@ -64,7 +64,7 @@
     }
 
     main {
-      max-width: 800px;
+      max-width: 1200px;
       width: 100%;
       padding: 32px 24px;
       flex: 1;
@@ -95,7 +95,7 @@
 
     textarea {
       width: 100%;
-      min-height: 140px;
+      min-height: 280px;
       padding: 14px 16px;
       font-family: inherit;
       font-size: 14px;
@@ -177,6 +177,13 @@
       transform: none;
     }
 
+    .btn-secondary {
+      background: var(--gray-bg);
+      color: var(--dark);
+    }
+
+    .btn-secondary:hover { background: var(--gray-light); }
+
     .shortcut {
       font-size: 11px;
       opacity: 0.7;
@@ -209,9 +216,37 @@
 
     .step-text {
       font-size: 14px;
-      color: var(--gray);
+      color: var(--dark);
+      font-weight: 500;
       min-height: 20px;
+      transition: opacity 0.3s;
     }
+
+    .step-detail {
+      font-size: 13px;
+      color: var(--gray);
+      margin-top: 4px;
+      min-height: 18px;
+      transition: opacity 0.3s;
+    }
+
+    .step-progress {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gray-light);
+      transition: background 0.3s;
+    }
+
+    .step-dot.active { background: var(--primary); }
+    .step-dot.done { background: var(--primary); opacity: 0.5; }
 
     /* ── Result state ────────────────────────── */
 
@@ -237,21 +272,124 @@
       color: var(--gray);
     }
 
-    .badge.approved {
-      background: #ECFDF5;
-      color: #059669;
-    }
-
-    .badge.not-approved {
-      background: #FEF3C7;
-      color: #D97706;
-    }
 
     .result-actions {
       display: flex;
       justify-content: flex-end;
       margin-top: 20px;
     }
+
+    /* ── Improvement section ──────────────────── */
+
+    .improve-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-light);
+    }
+
+    .improve-section label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--dark);
+    }
+
+    .improve-textarea {
+      min-height: 80px;
+    }
+
+    .improve-btn-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    /* ── Improvement loading ─────────────────── */
+
+    .improve-loading {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--primary-light);
+      border-radius: 10px;
+    }
+
+    .improve-loading.active { display: flex; }
+
+    .spinner-small {
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(108, 99, 255, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .improve-loading span {
+      font-size: 13px;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    /* ── Improvement history ─────────────────── */
+
+    .improve-history {
+      margin-top: 20px;
+    }
+
+    .improve-history h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-light);
+    }
+
+    .history-item:last-child { border-bottom: none; }
+
+    .history-number {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .history-thumb {
+      width: 48px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--gray-light);
+      flex-shrink: 0;
+    }
+
+    .history-summary {
+      font-size: 13px;
+      color: var(--dark);
+      flex: 1;
+    }
+
 
     /* ── Error ────────────────────────────────── */
 
@@ -264,6 +402,110 @@
       font-size: 14px;
       margin-top: 16px;
       display: none;
+    }
+
+    /* ── Category chips ──────────────────────── */
+
+    .categories-section { margin-bottom: 16px; }
+
+    .categories-header {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .categories-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .categories-note {
+      font-size: 12px;
+      color: var(--gray);
+      font-weight: 400;
+    }
+
+    .category-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 12px;
+      border: 1px solid var(--gray-light);
+      border-radius: 20px;
+      background: #fff;
+      color: var(--gray);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .chip:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .chip.selected {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    /* ── Prompt tips ─────────────────────────── */
+
+    .tips-section {
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .tips-section summary {
+      font-weight: 600;
+      color: var(--gray);
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 0;
+      list-style: none;
+    }
+
+    .tips-section summary::-webkit-details-marker { display: none; }
+
+    .tips-section summary::before {
+      content: '▸ ';
+      display: inline;
+      transition: transform 0.15s;
+    }
+
+    .tips-section[open] summary::before { content: '▾ '; }
+
+    .tips-list {
+      margin: 8px 0 0 0;
+      padding: 12px 16px;
+      background: var(--gray-bg);
+      border-radius: 8px;
+      list-style: none;
+    }
+
+    .tips-list li {
+      padding: 4px 0;
+      color: var(--dark);
+      line-height: 1.5;
+    }
+
+    .tips-list li + li {
+      border-top: 1px solid var(--gray-light);
+      margin-top: 4px;
+      padding-top: 8px;
+    }
+
+    .tips-list strong {
+      color: var(--dark);
     }
 
     /* ── Utility ──────────────────────────────── */
@@ -285,12 +527,41 @@
   <div id="state-input" class="card">
     <label for="brief">Diagram Brief</label>
     <p class="hint">Describe the diagram you want to generate in natural language.</p>
+
+    <div class="categories-section">
+      <div class="categories-header">
+        <span class="categories-label">Diagram type</span>
+        <span class="categories-note">Auto-detected if not specified</span>
+      </div>
+      <div class="category-chips">
+        <button type="button" class="chip" data-category="pipeline" title="Linear flow from input through processing to output">Pipeline</button>
+        <button type="button" class="chip" data-category="staged-progression" title="Numbered sequence of discrete phases">Staged Progression</button>
+        <button type="button" class="chip" data-category="canvas" title="Structured grid or framework with labelled sections">Canvas</button>
+        <button type="button" class="chip" data-category="comparison-cards" title="Side-by-side cards at the same hierarchy level">Comparison Cards</button>
+        <button type="button" class="chip" data-category="matrix" title="2x2 quadrant layout with labelled axes">Matrix</button>
+        <button type="button" class="chip" data-category="wheel" title="Hub-and-spoke with central node linking peers">Wheel</button>
+        <button type="button" class="chip" data-category="venn" title="Overlapping circles showing shared relationships">Venn</button>
+        <button type="button" class="chip" data-category="funnel" title="Tapering shape encoding progressive narrowing">Funnel</button>
+        <button type="button" class="chip" data-category="pyramid" title="Layered triangle encoding hierarchical ranking">Pyramid</button>
+      </div>
+    </div>
+
     <textarea id="brief" placeholder="e.g. A pipeline diagram showing data flowing from Stripe and HubSpot through an ETL layer into a Snowflake warehouse, then to a BI dashboard"></textarea>
+
+    <details class="tips-section">
+      <summary>Tips for best results</summary>
+      <ul class="tips-list">
+        <li><strong>Name every element.</strong> List all components, labels, and connections explicitly. Vague prompts produce vague diagrams.</li>
+        <li><strong>Describe structure, not style.</strong> Focus on what elements exist and how they connect. Colors, fonts, and branding are applied automatically.</li>
+        <li><strong>Specify relationships.</strong> State flow direction (left-to-right, top-down), groupings, and hierarchy between elements.</li>
+        <li><strong>More detail = better output.</strong> Include element counts, exact labels, and spatial arrangement. Longer, specific prompts consistently outperform short ones.</li>
+        <li><strong>Skip the title.</strong> Titles belong on slides, not inside the diagram. The system omits them by design.</li>
+      </ul>
+    </details>
+
     <div class="options-row">
       <label for="image-model">Image model</label>
       <select id="image-model"></select>
-      <label for="slide-format">Output size</label>
-      <select id="slide-format"></select>
     </div>
     <div id="error" class="error-box"></div>
     <div class="btn-row">
@@ -306,6 +577,8 @@
     <div class="spinner"></div>
     <h2>Generating your diagram</h2>
     <p class="step-text" id="step-text">Selecting references...</p>
+    <p class="step-detail" id="step-detail"></p>
+    <div class="step-progress" id="step-dots"></div>
   </div>
 
   <!-- Result State -->
@@ -313,10 +586,30 @@
     <img id="result-img" class="result-image" src="" alt="Generated diagram" />
     <div class="meta-row">
       <span class="badge" id="badge-rounds"></span>
-      <span class="badge" id="badge-approved"></span>
     </div>
-    <div class="result-actions">
-      <button id="btn-again" class="btn btn-primary" type="button">Generate Another</button>
+
+    <!-- Improvement section -->
+    <div class="improve-section">
+      <label for="improve-input">Improve this diagram</label>
+      <textarea id="improve-input" class="improve-textarea" placeholder="Describe what you'd like to change..."></textarea>
+      <div id="improve-error" class="error-box"></div>
+      <div class="improve-loading" id="improve-loading">
+        <div class="spinner-small"></div>
+        <span>Applying improvement...</span>
+      </div>
+      <div class="improve-btn-row">
+        <button id="btn-again" class="btn btn-secondary" type="button">Generate Another</button>
+        <button id="btn-improve" class="btn btn-primary" type="button">
+          Improve
+          <span class="shortcut">&#8984;&#9166;</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Improvement history -->
+    <div id="improve-history" class="improve-history hidden">
+      <h3>Improvement History</h3>
+      <div id="history-list"></div>
     </div>
   </div>
 </main>
@@ -328,14 +621,76 @@
   const stateResult  = document.getElementById('state-result');
   const briefEl      = document.getElementById('brief');
   const modelEl      = document.getElementById('image-model');
-  const formatEl     = document.getElementById('slide-format');
   const btnGenerate  = document.getElementById('btn-generate');
   const btnAgain     = document.getElementById('btn-again');
+  const btnImprove   = document.getElementById('btn-improve');
   const errorBox     = document.getElementById('error');
   const stepText     = document.getElementById('step-text');
   const resultImg    = document.getElementById('result-img');
   const badgeRounds  = document.getElementById('badge-rounds');
-  const badgeApproved = document.getElementById('badge-approved');
+  const improveInput = document.getElementById('improve-input');
+  const improveError = document.getElementById('improve-error');
+  const improveLoading = document.getElementById('improve-loading');
+  const improveHistory = document.getElementById('improve-history');
+  const historyList  = document.getElementById('history-list');
+
+  // State
+  let currentRunDir = null;
+  let improvementHistory = [];
+  let isImproving = false;
+
+  // Category templates — guide users on what content to provide per element
+  var categoryTemplates = {
+    'pipeline': 'Show [what process/concept] flowing from [source/trigger]\nthrough [step 1 name]: [what happens here]\nthen [step 2 name]: [what happens here]\nthen [step 3 name]: [what happens here]\nto [destination/outcome]: [result or benefit]',
+
+    'staged-progression': 'Show [how many] phases of [process name]:\n\nPhase 1 — [name]: [what this phase delivers and key activities]\nPhase 2 — [name]: [what this phase delivers and key activities]\nPhase 3 — [name]: [what this phase delivers and key activities]\nPhase 4 — [name]: [what this phase delivers and key activities]',
+
+    'canvas': 'Show a [framework name] framework with these sections:\n\n[Section 1 name]: [guiding question or description of what belongs here]\n[Section 2 name]: [guiding question or description of what belongs here]\n[Section 3 name]: [guiding question or description of what belongs here]\n[Section 4 name]: [guiding question or description of what belongs here]',
+
+    'comparison-cards': 'Compare [how many] [what are they — e.g. options, types, approaches]:\n\nCard 1 — [name]: [one-line description of what it means] → [consequence or key takeaway]\nCard 2 — [name]: [one-line description of what it means] → [consequence or key takeaway]\nCard 3 — [name]: [one-line description of what it means] → [consequence or key takeaway]',
+
+    'matrix': 'Plot [what items/initiatives] against two axes:\n\nVertical axis: [dimension — e.g. Impact] (high at top, low at bottom)\nHorizontal axis: [dimension — e.g. Feasibility] (low at left, high at right)\n\nTop-right quadrant [label]: [item A], [item B]\nTop-left quadrant [label]: [item C]\nBottom-right quadrant [label]: [item D]\nBottom-left quadrant [label]: [item E]',
+
+    'wheel': 'Show [central concept] at the centre, surrounded by [how many] pillars:\n\nPillar 1 — [name]: [one-line description of this dimension]\nPillar 2 — [name]: [one-line description of this dimension]\nPillar 3 — [name]: [one-line description of this dimension]\nPillar 4 — [name]: [one-line description of this dimension]\nPillar 5 — [name]: [one-line description of this dimension]',
+
+    'venn': 'Show where [how many] concepts overlap:\n\nCircle 1 — [name]: [what this concept represents]\nCircle 2 — [name]: [what this concept represents]\nCircle 3 — [name]: [what this concept represents]\n\nOverlap between [1] and [2]: [what the intersection means]\nOverlap between [2] and [3]: [what the intersection means]\nCentre (all overlap): [what the shared core represents]',
+
+    'funnel': 'Show [how many] stages narrowing from broad to specific:\n\nStage 1 (widest) — [name]: [what enters at this stage, volume or scope]\nStage 2 — [name]: [what filtering or qualification happens here]\nStage 3 — [name]: [what narrows further here]\nStage 4 (narrowest) — [name]: [final outcome, what survives the funnel]',
+
+    'pyramid': 'Show [how many] levels from foundation to apex:\n\nBase (widest) — [name]: [what this foundational layer represents]\nLevel 2 — [name]: [what builds on the base]\nLevel 3 — [name]: [what builds on level 2]\nApex (top) — [name]: [the pinnacle — highest priority or most refined]'
+  };
+
+  var defaultPlaceholder = 'e.g. A pipeline diagram showing data flowing from Stripe and HubSpot through an ETL layer into a Snowflake warehouse, then to a BI dashboard';
+
+  // Category chip selection (single-select, toggle off to deselect)
+  let selectedCategory = null;
+  var lastTemplateValue = null; // track if user has edited away from template
+  const chips = document.querySelectorAll('.chip[data-category]');
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var isCurrentlyEmpty = briefEl.value.trim() === '' || briefEl.value === lastTemplateValue;
+
+      if (chip.classList.contains('selected')) {
+        chip.classList.remove('selected');
+        selectedCategory = null;
+        lastTemplateValue = null;
+        if (isCurrentlyEmpty) {
+          briefEl.value = '';
+          briefEl.placeholder = defaultPlaceholder;
+        }
+      } else {
+        chips.forEach(function (c) { c.classList.remove('selected'); });
+        chip.classList.add('selected');
+        selectedCategory = chip.getAttribute('data-category');
+        var tpl = categoryTemplates[selectedCategory];
+        if (tpl && isCurrentlyEmpty) {
+          briefEl.value = tpl;
+          lastTemplateValue = tpl;
+          briefEl.placeholder = '';
+        }
+      }
+    });
+  });
 
   // Populate image-model dropdown from the API
   fetch('/api/image-models')
@@ -349,49 +704,124 @@
       });
     });
 
-  // Populate slide-format dropdown from the API
-  fetch('/api/slide-formats')
-    .then(function (r) { return r.json(); })
-    .then(function (formats) {
-      Object.keys(formats).forEach(function (key) {
-        var opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = formats[key].label;
-        formatEl.appendChild(opt);
-      });
-      // Default to HD 16:9
-      formatEl.value = 'hd_16_9';
-    });
-
   function show(el) { el.classList.remove('hidden'); }
   function hide(el) { el.classList.add('hidden'); }
 
-  // Simulated step progress messages
+  // Pipeline step progress — each step maps to an agent in the pipeline
   const steps = [
-    'Selecting references...',
-    'Planning visual layout...',
-    'Applying brand style...',
-    'Generating image...',
-    'Evaluating quality...',
-    'Refining details...',
-    'Almost there...',
+    {
+      label: 'Retriever — Selecting references',
+      detail: 'Matching your brief against the reference catalogue to find the most structurally relevant diagram examples.'
+    },
+    {
+      label: 'Planner — Designing layout',
+      detail: 'Studying reference images to learn spatial patterns, then building a structured element hierarchy for your diagram.'
+    },
+    {
+      label: 'Stylist — Applying brand identity',
+      detail: 'Translating the structural plan into a fully styled specification — colours, typography, spacing, and shape language.'
+    },
+    {
+      label: 'Visualizer — Rendering image',
+      detail: 'Converting the styled description into a consulting-grade diagram image with clear hierarchy and visual encoding.'
+    },
+    {
+      label: 'Critic — Evaluating quality',
+      detail: 'Checking faithfulness, readability, text quality, and conciseness. Comparing the rendered image against your original brief.'
+    },
+    {
+      label: 'Refining — Applying corrections',
+      detail: 'The Critic found improvements. Re-rendering with targeted fixes to the description.'
+    },
+    {
+      label: 'Finalising',
+      detail: 'Saving artifacts and preparing your diagram for display.'
+    },
   ];
 
   let stepInterval = null;
+  const stepDetail = document.getElementById('step-detail');
+  const stepDotsEl = document.getElementById('step-dots');
+
+  function renderDots() {
+    stepDotsEl.innerHTML = '';
+    for (var i = 0; i < steps.length; i++) {
+      var dot = document.createElement('span');
+      dot.className = 'step-dot';
+      stepDotsEl.appendChild(dot);
+    }
+  }
+
+  function updateDots(idx) {
+    var dots = stepDotsEl.querySelectorAll('.step-dot');
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].className = 'step-dot' + (i < idx ? ' done' : i === idx ? ' active' : '');
+    }
+  }
 
   function startStepProgress() {
     let idx = 0;
-    stepText.textContent = steps[0];
+    renderDots();
+    stepText.textContent = steps[0].label;
+    stepDetail.textContent = steps[0].detail;
+    updateDots(0);
     stepInterval = setInterval(function () {
       idx++;
       if (idx < steps.length) {
-        stepText.textContent = steps[idx];
+        stepText.textContent = steps[idx].label;
+        stepDetail.textContent = steps[idx].detail;
+        updateDots(idx);
       }
-    }, 4000);
+    }, 6000);
   }
 
   function stopStepProgress() {
     if (stepInterval) { clearInterval(stepInterval); stepInterval = null; }
+  }
+
+  function renderHistory() {
+    if (improvementHistory.length === 0) {
+      hide(improveHistory);
+      return;
+    }
+    show(improveHistory);
+    historyList.innerHTML = '';
+    improvementHistory.forEach(function (item) {
+      var div = document.createElement('div');
+      div.className = 'history-item';
+
+      var imageUrl = '/output/' + currentRunDir.split('/output/')[1] + '/' + item.image_filename;
+
+      var numEl = document.createElement('span');
+      numEl.className = 'history-number';
+      numEl.textContent = item.round_number;
+
+      var img = document.createElement('img');
+      img.className = 'history-thumb';
+      img.src = imageUrl;
+      img.alt = 'Round ' + item.round_number;
+
+      var summaryEl = document.createElement('span');
+      summaryEl.className = 'history-summary';
+      summaryEl.textContent = item.summary;
+
+      div.appendChild(numEl);
+      div.appendChild(img);
+      div.appendChild(summaryEl);
+
+      historyList.appendChild(div);
+    });
+  }
+
+  function showResult(imageUrl, roundsText, runDir) {
+    resultImg.src = imageUrl + '?t=' + Date.now();
+    badgeRounds.textContent = roundsText;
+    currentRunDir = runDir;
+
+    stopStepProgress();
+    hide(stateLoading);
+    show(stateResult);
+    improveInput.focus();
   }
 
   async function generate() {
@@ -408,11 +838,21 @@
     show(stateLoading);
     startStepProgress();
 
+    // Reset improvement state
+    currentRunDir = null;
+    improvementHistory = [];
+    hide(improveHistory);
+    historyList.innerHTML = '';
+    improveInput.value = '';
+
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brief: brief, slide_format: formatEl.value, image_model: modelEl.value }),
+        body: JSON.stringify({
+          brief: selectedCategory ? '[' + selectedCategory + '] ' + brief : brief,
+          image_model: modelEl.value,
+        }),
       });
 
       const data = await res.json();
@@ -421,17 +861,8 @@
         throw new Error(data.error || 'Generation failed.');
       }
 
-      // Show result
-      resultImg.src = data.image_url;
-      badgeRounds.textContent = data.rounds_taken === 1
-        ? '1 round'
-        : data.rounds_taken + ' rounds';
-      badgeApproved.textContent = data.approved ? 'Approved' : 'Max rounds reached';
-      badgeApproved.className = 'badge ' + (data.approved ? 'approved' : 'not-approved');
-
-      stopStepProgress();
-      hide(stateLoading);
-      show(stateResult);
+      var roundsText = data.rounds_taken === 1 ? '1 round' : data.rounds_taken + ' rounds';
+      showResult(data.image_url, roundsText, data.run_dir);
 
     } catch (err) {
       stopStepProgress();
@@ -442,11 +873,82 @@
     }
   }
 
+  async function improve() {
+    var instruction = improveInput.value.trim();
+    if (!instruction) {
+      improveError.textContent = 'Please describe what you\'d like to change.';
+      improveError.style.display = 'block';
+      improveInput.focus();
+      return;
+    }
+
+    if (!currentRunDir) {
+      improveError.textContent = 'No diagram to improve. Generate one first.';
+      improveError.style.display = 'block';
+      return;
+    }
+
+    improveError.style.display = 'none';
+    isImproving = true;
+    btnImprove.disabled = true;
+    improveLoading.classList.add('active');
+
+    try {
+      var res = await fetch('/api/improve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          run_dir: currentRunDir,
+          instruction: instruction,
+          image_model: modelEl.value,
+        }),
+      });
+
+      var data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Improvement failed.');
+      }
+
+      // Update image
+      resultImg.src = data.image_url + '?t=' + Date.now();
+
+      // Update badge
+      var totalRounds = data.history.length;
+      badgeRounds.textContent = totalRounds + (totalRounds === 1 ? ' improvement' : ' improvements');
+
+      // Update history
+      improvementHistory = data.history;
+      renderHistory();
+
+      // Clear input
+      improveInput.value = '';
+
+    } catch (err) {
+      improveError.textContent = err.message;
+      improveError.style.display = 'block';
+    } finally {
+      isImproving = false;
+      btnImprove.disabled = false;
+      improveLoading.classList.remove('active');
+    }
+  }
+
   btnGenerate.addEventListener('click', generate);
+  btnImprove.addEventListener('click', improve);
 
   btnAgain.addEventListener('click', function () {
     briefEl.value = '';
+    briefEl.placeholder = defaultPlaceholder;
+    selectedCategory = null;
+    lastTemplateValue = null;
+    chips.forEach(function (c) { c.classList.remove('selected'); });
+    currentRunDir = null;
+    improvementHistory = [];
+    improveInput.value = '';
     hide(stateResult);
+    hide(improveHistory);
+    historyList.innerHTML = '';
     show(stateInput);
     briefEl.focus();
   });
@@ -454,9 +956,11 @@
   // Cmd+Enter / Ctrl+Enter shortcut
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
       if (!stateInput.classList.contains('hidden')) {
-        e.preventDefault();
         generate();
+      } else if (!stateResult.classList.contains('hidden') && !isImproving) {
+        improve();
       }
     }
   });
