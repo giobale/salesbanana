@@ -29,7 +29,7 @@ retriever_classify: |
   - wheel: Pinwheel or hub-and-spoke arrangement. A central connecting
     shape (organic, circular, or radial) links 3–6 peripheral nodes in a
     symmetric layout. No linear flow — nodes are peers around a centre.
-- venn: Overlapping circles (2–4) where shared intersection zones carry
+  - venn: Overlapping circles (2–4) where shared intersection zones carry
     meaning. Each circle represents an equal peer element. No directional
     flow — the layout emphasises shared relationships and mutual overlap.
     Typically 2–4 circles with a central intersection.
