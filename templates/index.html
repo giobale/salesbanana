@@ -584,9 +584,6 @@
   <!-- Result State -->
   <div id="state-result" class="card hidden">
     <img id="result-img" class="result-image" src="" alt="Generated diagram" />
-    <div class="meta-row">
-      <span class="badge" id="badge-rounds"></span>
-    </div>
 
     <!-- Improvement section -->
     <div class="improve-section">
@@ -627,7 +624,6 @@
   const errorBox     = document.getElementById('error');
   const stepText     = document.getElementById('step-text');
   const resultImg    = document.getElementById('result-img');
-  const badgeRounds  = document.getElementById('badge-rounds');
   const improveInput = document.getElementById('improve-input');
   const improveError = document.getElementById('improve-error');
   const improveLoading = document.getElementById('improve-loading');
@@ -815,7 +811,6 @@
 
   function showResult(imageUrl, roundsText, runDir) {
     resultImg.src = imageUrl + '?t=' + Date.now();
-    badgeRounds.textContent = roundsText;
     currentRunDir = runDir;
 
     stopStepProgress();
@@ -912,10 +907,6 @@
 
       // Update image
       resultImg.src = data.image_url + '?t=' + Date.now();
-
-      // Update badge
-      var totalRounds = data.history.length;
-      badgeRounds.textContent = totalRounds + (totalRounds === 1 ? ' improvement' : ' improvements');
 
       // Update history
       improvementHistory = data.history;
