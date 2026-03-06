@@ -76,6 +76,7 @@ async def api_improve(request: Request):
     run_dir_str = body.get("run_dir", "").strip()
     instruction = body.get("instruction", "").strip()
     image_model = body.get("image_model")
+    branch_from_round = body.get("branch_from_round")
 
     if not run_dir_str:
         return JSONResponse({"error": "run_dir is required."}, status_code=400)
@@ -83,6 +84,9 @@ async def api_improve(request: Request):
         return JSONResponse({"error": "Improvement instruction is required."}, status_code=400)
     if image_model and image_model not in IMAGE_MODELS:
         return JSONResponse({"error": f"Unknown image model: {image_model}"}, status_code=400)
+    if branch_from_round is not None:
+        if not isinstance(branch_from_round, int) or isinstance(branch_from_round, bool) or branch_from_round < 0:
+            return JSONResponse({"error": "branch_from_round must be a non-negative integer."}, status_code=400)
 
     run_dir = Path(run_dir_str).resolve()
     try:
@@ -92,7 +96,7 @@ async def api_improve(request: Request):
 
     try:
         result = await asyncio.to_thread(
-            improve_diagram, run_dir, instruction, image_model=image_model,
+            improve_diagram, run_dir, instruction, image_model=image_model, branch_from_round=branch_from_round,
         )
     except FileNotFoundError as e:
         return JSONResponse({"error": str(e)}, status_code=404)

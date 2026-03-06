@@ -124,6 +124,7 @@ def generate_diagram(
 
     # ── Save final outputs ────────────────────────────────────────────
 
+    save_image(final_image_bytes, run_dir / "00_original_image.png")
     final_path = save_image(final_image_bytes, run_dir / "final.png")
 
     elapsed = time.time() - start_time
@@ -192,7 +193,8 @@ def _get_last_image_bytes(run_dir: Path, history: list[ImprovementRound]) -> byt
         last = history[-1]
         path = run_dir / last.image_filename
     else:
-        path = run_dir / "final.png"
+        original = run_dir / "00_original_image.png"
+        path = original if original.exists() else run_dir / "final.png"
     return path.read_bytes()
 
 
@@ -240,6 +242,7 @@ def improve_diagram(
     run_dir: Path,
     instruction: str,
     image_model: str | None = None,
+    branch_from_round: int | None = None,
 ) -> ImprovementResult:
     """
     Apply a user-driven improvement to an existing diagram.
@@ -273,9 +276,25 @@ def improve_diagram(
     brief = run_meta["brief"]
 
     history = _load_improvements(run_dir)
+
+    # Branch from history: truncate to the selected round
+    if branch_from_round is not None:
+        if branch_from_round < 0:
+            raise ValueError(f"Invalid branch_from_round: {branch_from_round}")
+        if branch_from_round == 0:
+            history = []
+        else:
+            history = [r for r in history if r.round_number <= branch_from_round]
+            if not history or history[-1].round_number != branch_from_round:
+                raise ValueError(
+                    f"Round {branch_from_round} not found in improvement history"
+                )
+        _save_improvements(run_dir, history)
+        logger.info("Branched from round %d, history truncated to %d items", branch_from_round, len(history))
+
     last_description = _get_last_description(run_dir, history)
     last_image_bytes = _get_last_image_bytes(run_dir, history)
-    round_number = len(history) + 1
+    round_number = (max(r.round_number for r in history) + 1) if history else 1
 
     logger.info("Improvement round %d, instruction: %s", round_number, instruction[:80])
 

@@ -371,11 +371,27 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 0;
+      padding: 10px;
       border-bottom: 1px solid var(--gray-light);
+      border-left: 3px solid transparent;
+      cursor: pointer;
+      transition: background 0.15s, border-left-color 0.15s;
+      border-radius: 4px;
     }
 
     .history-item:last-child { border-bottom: none; }
+
+    .history-item:hover { background: var(--gray-bg); }
+
+    .history-item.selected {
+      background: var(--primary-light);
+      border-left-color: var(--primary);
+    }
+
+    .history-item.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
 
     .history-number {
       font-size: 12px;
@@ -524,6 +540,49 @@
       color: var(--dark);
     }
 
+    /* ── Confirm modal ─────────────────────────── */
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 26, 46, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 32px;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
+
+    .modal-box p {
+      font-size: 14px;
+      color: var(--gray);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
     /* ── Utility ──────────────────────────────── */
 
     .hidden { display: none !important; }
@@ -637,6 +696,19 @@
   </div>
 </main>
 
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <h3 id="confirm-modal-title"></h3>
+    <p id="confirm-modal-body"></p>
+    <div class="modal-actions">
+      <button id="confirm-modal-alt" class="btn btn-secondary hidden" type="button"></button>
+      <button id="confirm-modal-cancel" class="btn btn-secondary" type="button">Cancel</button>
+      <button id="confirm-modal-ok" class="btn btn-primary" type="button">Continue</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   const stateInput   = document.getElementById('state-input');
@@ -656,11 +728,47 @@
   const improveLoading = document.getElementById('improve-loading');
   const improveHistory = document.getElementById('improve-history');
   const historyList  = document.getElementById('history-list');
+  const confirmModal = document.getElementById('confirm-modal');
+  const confirmModalTitle = document.getElementById('confirm-modal-title');
+  const confirmModalBody = document.getElementById('confirm-modal-body');
+  const confirmModalAlt = document.getElementById('confirm-modal-alt');
+  const confirmModalCancel = document.getElementById('confirm-modal-cancel');
+  const confirmModalOk = document.getElementById('confirm-modal-ok');
+
+  // Returns: 'ok', 'alt', or 'cancel'
+  function showConfirmModal(opts) {
+    return new Promise(function (resolve) {
+      confirmModalTitle.textContent = opts.title || 'Are you sure?';
+      confirmModalBody.textContent = opts.message;
+      confirmModalOk.textContent = opts.okLabel || 'Continue';
+      if (opts.altLabel) {
+        confirmModalAlt.textContent = opts.altLabel;
+        confirmModalAlt.classList.remove('hidden');
+      } else {
+        confirmModalAlt.classList.add('hidden');
+      }
+      confirmModal.classList.add('active');
+      function cleanup() {
+        confirmModal.classList.remove('active');
+        confirmModalCancel.removeEventListener('click', onCancel);
+        confirmModalOk.removeEventListener('click', onOk);
+        confirmModalAlt.removeEventListener('click', onAlt);
+      }
+      function onCancel() { cleanup(); resolve('cancel'); }
+      function onOk() { cleanup(); resolve('ok'); }
+      function onAlt() { cleanup(); resolve('alt'); }
+      confirmModalCancel.addEventListener('click', onCancel);
+      confirmModalOk.addEventListener('click', onOk);
+      confirmModalAlt.addEventListener('click', onAlt);
+    });
+  }
 
   // State
   let currentRunDir = null;
   let improvementHistory = [];
   let isImproving = false;
+  let selectedBranchRound = null;
+  let currentImageUrl = null;
 
   // Category templates — guide users on what content to provide per element
   var categoryTemplates = {
@@ -802,6 +910,10 @@
     if (stepInterval) { clearInterval(stepInterval); stepInterval = null; }
   }
 
+  function getOutputRelPath() {
+    return currentRunDir.split('/output/')[1];
+  }
+
   function renderHistory() {
     if (improvementHistory.length === 0) {
       hide(improveHistory);
@@ -809,11 +921,40 @@
     }
     show(improveHistory);
     historyList.innerHTML = '';
+
+    var relPath = getOutputRelPath();
+
+    // Round 0 — Original
+    var origDiv = document.createElement('div');
+    origDiv.className = 'history-item' + (selectedBranchRound === 0 ? ' selected' : '') + (isImproving ? ' disabled' : '');
+    origDiv.addEventListener('click', function () { selectBranch(0); });
+
+    var origNum = document.createElement('span');
+    origNum.className = 'history-number';
+    origNum.textContent = '0';
+
+    var origImg = document.createElement('img');
+    origImg.className = 'history-thumb';
+    origImg.src = '/output/' + relPath + '/00_original_image.png';
+    origImg.alt = 'Original';
+    origImg.onerror = function () { this.src = '/output/' + relPath + '/final.png'; };
+
+    var origSummary = document.createElement('span');
+    origSummary.className = 'history-summary';
+    origSummary.textContent = 'Original diagram';
+
+    origDiv.appendChild(origNum);
+    origDiv.appendChild(origImg);
+    origDiv.appendChild(origSummary);
+    historyList.appendChild(origDiv);
+
+    // Improvement rounds
     improvementHistory.forEach(function (item) {
       var div = document.createElement('div');
-      div.className = 'history-item';
+      div.className = 'history-item' + (selectedBranchRound === item.round_number ? ' selected' : '') + (isImproving ? ' disabled' : '');
+      div.addEventListener('click', function () { selectBranch(item.round_number); });
 
-      var imageUrl = '/output/' + currentRunDir.split('/output/')[1] + '/' + item.image_filename;
+      var imageUrl = '/output/' + relPath + '/' + item.image_filename;
 
       var numEl = document.createElement('span');
       numEl.className = 'history-number';
@@ -836,7 +977,39 @@
     });
   }
 
+  function selectBranch(roundNumber) {
+    if (isImproving || !currentRunDir) return;
+
+    // Selecting the latest round is a no-op (deselect)
+    var latestRound = improvementHistory.length;
+    if (roundNumber === latestRound && selectedBranchRound === null) return;
+
+    if (selectedBranchRound === roundNumber) {
+      // Toggle off: deselect
+      selectedBranchRound = null;
+      resultImg.src = currentImageUrl + '?t=' + Date.now();
+    } else {
+      selectedBranchRound = roundNumber;
+      // Preview: swap main image to the selected round's image
+      var relPath = getOutputRelPath();
+      var previewUrl;
+      if (roundNumber === 0) {
+        previewUrl = '/output/' + relPath + '/00_original_image.png';
+      } else {
+        var item = improvementHistory.find(function (h) { return h.round_number === roundNumber; });
+        if (item) {
+          previewUrl = '/output/' + relPath + '/' + item.image_filename;
+        }
+      }
+      if (previewUrl) {
+        resultImg.src = previewUrl + '?t=' + Date.now();
+      }
+    }
+    renderHistory();
+  }
+
   function showResult(imageUrl, roundsText, runDir) {
+    currentImageUrl = imageUrl;
     resultImg.src = imageUrl + '?t=' + Date.now();
     currentRunDir = runDir;
 
@@ -863,6 +1036,8 @@
     // Reset improvement state
     currentRunDir = null;
     improvementHistory = [];
+    selectedBranchRound = null;
+    currentImageUrl = null;
     hide(improveHistory);
     historyList.innerHTML = '';
     improveInput.value = '';
@@ -910,20 +1085,42 @@
       return;
     }
 
+    // Confirmation if branching (discarding improvements)
+    if (selectedBranchRound !== null) {
+      var latestRound = improvementHistory.length;
+      if (selectedBranchRound < latestRound) {
+        var discardCount = latestRound - selectedBranchRound;
+        var msg = 'This will discard ' + discardCount + ' improvement' +
+          (discardCount !== 1 ? 's' : '') +
+          ' (rounds ' + (selectedBranchRound + 1) + ' through ' + latestRound + ').';
+        var result = await showConfirmModal({
+          title: 'Discard improvements?',
+          message: msg,
+        });
+        if (result !== 'ok') return;
+      }
+    }
+
     improveError.style.display = 'none';
     isImproving = true;
     btnImprove.disabled = true;
     improveLoading.classList.add('active');
+    renderHistory(); // Re-render to apply disabled state
 
     try {
+      var payload = {
+        run_dir: currentRunDir,
+        instruction: instruction,
+        image_model: modelEl.value,
+      };
+      if (selectedBranchRound !== null) {
+        payload.branch_from_round = selectedBranchRound;
+      }
+
       var res = await fetch('/api/improve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          run_dir: currentRunDir,
-          instruction: instruction,
-          image_model: modelEl.value,
-        }),
+        body: JSON.stringify(payload),
       });
 
       var data = await res.json();
@@ -932,11 +1129,13 @@
         throw new Error(data.error || 'Improvement failed.');
       }
 
-      // Update image
+      // Update image and track latest URL
+      currentImageUrl = data.image_url;
       resultImg.src = data.image_url + '?t=' + Date.now();
 
-      // Update history
+      // Update history and clear branch selection
       improvementHistory = data.history;
+      selectedBranchRound = null;
       renderHistory();
 
       // Clear input
@@ -949,6 +1148,7 @@
       isImproving = false;
       btnImprove.disabled = false;
       improveLoading.classList.remove('active');
+      renderHistory(); // Re-render to remove disabled state
     }
   }
 
@@ -974,7 +1174,20 @@
     }
   });
 
-  btnAgain.addEventListener('click', function () {
+  btnAgain.addEventListener('click', async function () {
+    if (improvementHistory.length > 0) {
+      var result = await showConfirmModal({
+        title: 'Start a new diagram?',
+        message: 'You will lose the current diagram and all its improvements. You can also open a new tab to keep this work.',
+        okLabel: 'Start new here',
+        altLabel: 'Open in new tab',
+      });
+      if (result === 'cancel') return;
+      if (result === 'alt') {
+        window.open(window.location.href, '_blank');
+        return;
+      }
+    }
     briefEl.value = '';
     briefEl.placeholder = defaultPlaceholder;
     selectedCategory = null;
@@ -982,6 +1195,8 @@
     chips.forEach(function (c) { c.classList.remove('selected'); });
     currentRunDir = null;
     improvementHistory = [];
+    selectedBranchRound = null;
+    currentImageUrl = null;
     improveInput.value = '';
     hide(stateResult);
     hide(improveHistory);
