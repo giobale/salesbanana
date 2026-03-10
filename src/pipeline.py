@@ -6,6 +6,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from collections.abc import Callable
+
 from src.agents import critic, planner, retriever, stylist, visualizer
 from src.config import client, settings
 from src.models import ImprovementResult, ImprovementRound, PipelineResult, RunMetadata
@@ -124,6 +126,7 @@ def generate_diagram(
 
     # ── Save final outputs ────────────────────────────────────────────
 
+    save_image(final_image_bytes, run_dir / "00_original_image.png")
     final_path = save_image(final_image_bytes, run_dir / "final.png")
 
     elapsed = time.time() - start_time
@@ -192,7 +195,8 @@ def _get_last_image_bytes(run_dir: Path, history: list[ImprovementRound]) -> byt
         last = history[-1]
         path = run_dir / last.image_filename
     else:
-        path = run_dir / "final.png"
+        original = run_dir / "00_original_image.png"
+        path = original if original.exists() else run_dir / "final.png"
     return path.read_bytes()
 
 
@@ -240,6 +244,8 @@ def improve_diagram(
     run_dir: Path,
     instruction: str,
     image_model: str | None = None,
+    branch_from_round: int | None = None,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> ImprovementResult:
     """
     Apply a user-driven improvement to an existing diagram.
@@ -255,6 +261,10 @@ def improve_diagram(
     Returns:
         ImprovementResult with the new image and updated history.
     """
+    def _step(label: str) -> None:
+        if progress_callback is not None:
+            progress_callback(label)
+
     # Validate run_dir is under output_dir
     try:
         run_dir.resolve().relative_to(settings.output_dir.resolve())
@@ -264,6 +274,7 @@ def improve_diagram(
     if not run_dir.exists():
         raise FileNotFoundError(f"Run directory not found: {run_dir}")
 
+    _step("Loading context")
     logger.info("=== Improvement started === Run dir: %s", run_dir)
 
     # Load context
@@ -273,28 +284,58 @@ def improve_diagram(
     brief = run_meta["brief"]
 
     history = _load_improvements(run_dir)
+
+    # Branch from history: truncate to the selected round
+    if branch_from_round is not None:
+        if branch_from_round < 0:
+            raise ValueError(f"Invalid branch_from_round: {branch_from_round}")
+        if branch_from_round == 0:
+            history = []
+        else:
+            history = [r for r in history if r.round_number <= branch_from_round]
+            if not history or history[-1].round_number != branch_from_round:
+                raise ValueError(
+                    f"Round {branch_from_round} not found in improvement history"
+                )
+        _save_improvements(run_dir, history)
+        logger.info("Branched from round %d, history truncated to %d items", branch_from_round, len(history))
+
     last_description = _get_last_description(run_dir, history)
     last_image_bytes = _get_last_image_bytes(run_dir, history)
-    round_number = len(history) + 1
+    round_number = (max(r.round_number for r in history) + 1) if history else 1
 
     logger.info("Improvement round %d, instruction: %s", round_number, instruction[:80])
 
     # Generate summary
+    _step("Summarising instruction")
     summary = _generate_summary(instruction)
     logger.info("Summary: %s", summary)
 
     # Merge instruction into description
+    _step("Merging description")
     history_text = _format_history_for_prompt(history)
     merged_description = _merge_description(last_description, instruction, history_text)
     logger.info("Description merged (%d words)", len(merged_description.split()))
 
+    # Save pre-restyle artifact for debuggability
+    _save_text(run_dir, f"05_improvement_{round_number}_merged.md", merged_description)
+
+    # Restyle: enforce style guide on merged description
+    _step("Applying style")
+    logger.info("--- Improvement %d: Stylist (restyle) ---", round_number)
+    category = run_meta.get("category", "")
+    merged_description = stylist.restyle(merged_description, category)
+    logger.info("Description restyled (%d words)", len(merged_description.split()))
+
     # Generate improved image
+    _step("Generating image")
     logger.info("--- Improvement %d: Visualizer (edit) ---", round_number)
     new_image_bytes = visualizer.edit_image(
         merged_description, last_image_bytes, image_model=image_model
     )
 
     # Critic evaluation
+    _step("Evaluating quality")
     logger.info("--- Improvement %d: Critic ---", round_number)
     critique = critic.evaluate_improvement(
         image_bytes=new_image_bytes,
@@ -309,6 +350,7 @@ def improve_diagram(
 
     # One auto-retry if critic rejects
     if not approved and critique.refined_description:
+        _step("Refining")
         logger.info("--- Improvement %d: Auto-retry with critic revision ---", round_number)
         current_description = critique.refined_description
         new_image_bytes = visualizer.edit_image(
@@ -325,6 +367,7 @@ def improve_diagram(
         critique = retry_critique
 
     # Save artifacts
+    _step("Saving artifacts")
     final_image_bytes = new_image_bytes
     img_filename = f"05_improvement_{round_number}_image.png"
     save_image(new_image_bytes, run_dir / img_filename)

@@ -1,12 +1,14 @@
 """SalesBanana Web UI — thin FastAPI wrapper around generate_diagram()."""
 
 import asyncio
+import json
 import logging
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.responses import StreamingResponse
 
 from pathlib import Path
 
@@ -76,6 +78,7 @@ async def api_improve(request: Request):
     run_dir_str = body.get("run_dir", "").strip()
     instruction = body.get("instruction", "").strip()
     image_model = body.get("image_model")
+    branch_from_round = body.get("branch_from_round")
 
     if not run_dir_str:
         return JSONResponse({"error": "run_dir is required."}, status_code=400)
@@ -83,6 +86,9 @@ async def api_improve(request: Request):
         return JSONResponse({"error": "Improvement instruction is required."}, status_code=400)
     if image_model and image_model not in IMAGE_MODELS:
         return JSONResponse({"error": f"Unknown image model: {image_model}"}, status_code=400)
+    if branch_from_round is not None:
+        if not isinstance(branch_from_round, int) or isinstance(branch_from_round, bool) or branch_from_round < 0:
+            return JSONResponse({"error": "branch_from_round must be a non-negative integer."}, status_code=400)
 
     run_dir = Path(run_dir_str).resolve()
     try:
@@ -92,7 +98,7 @@ async def api_improve(request: Request):
 
     try:
         result = await asyncio.to_thread(
-            improve_diagram, run_dir, instruction, image_model=image_model,
+            improve_diagram, run_dir, instruction, image_model=image_model, branch_from_round=branch_from_round,
         )
     except FileNotFoundError as e:
         return JSONResponse({"error": str(e)}, status_code=404)
@@ -120,3 +126,102 @@ async def api_improve(request: Request):
             for r in result.history
         ],
     }
+
+
+@app.post("/api/improve-stream")
+async def api_improve_stream(request: Request):
+    """SSE endpoint that streams pipeline step progress during improvement."""
+    body = await request.json()
+    run_dir_str = body.get("run_dir", "").strip()
+    instruction = body.get("instruction", "").strip()
+    image_model = body.get("image_model")
+    branch_from_round = body.get("branch_from_round")
+
+    if not run_dir_str:
+        return JSONResponse({"error": "run_dir is required."}, status_code=400)
+    if not instruction:
+        return JSONResponse({"error": "Improvement instruction is required."}, status_code=400)
+    if image_model and image_model not in IMAGE_MODELS:
+        return JSONResponse({"error": f"Unknown image model: {image_model}"}, status_code=400)
+    if branch_from_round is not None:
+        if not isinstance(branch_from_round, int) or isinstance(branch_from_round, bool) or branch_from_round < 0:
+            return JSONResponse({"error": "branch_from_round must be a non-negative integer."}, status_code=400)
+
+    run_dir = Path(run_dir_str).resolve()
+    try:
+        run_dir.relative_to(settings.output_dir.resolve())
+    except ValueError:
+        return JSONResponse({"error": "Invalid run directory."}, status_code=400)
+
+    queue: asyncio.Queue[str | None] = asyncio.Queue()
+    loop = asyncio.get_event_loop()
+
+    def progress_callback(step: str) -> None:
+        loop.call_soon_threadsafe(queue.put_nowait, f"event: step\ndata: {step}\n\n")
+
+    async def event_generator():
+        task = asyncio.create_task(asyncio.to_thread(
+            improve_diagram,
+            run_dir,
+            instruction,
+            image_model=image_model,
+            branch_from_round=branch_from_round,
+            progress_callback=progress_callback,
+        ))
+
+        while True:
+            # Wait for either a queue item or the task to finish
+            get_task = asyncio.create_task(queue.get())
+            done, _ = await asyncio.wait(
+                [get_task, task], return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if get_task in done:
+                msg = get_task.result()
+                if msg is not None:
+                    yield msg
+            else:
+                get_task.cancel()
+
+            if task in done:
+                # Drain remaining queue items
+                while not queue.empty():
+                    msg = queue.get_nowait()
+                    if msg is not None:
+                        yield msg
+                break
+
+        # Send final result or error
+        try:
+            result = task.result()
+            image_rel = result.image_path.relative_to(settings.output_dir)
+            image_url = f"/output/{image_rel}"
+            data = json.dumps({
+                "image_url": image_url,
+                "round_number": result.round_number,
+                "summary": result.summary,
+                "approved": result.approved,
+                "history": [
+                    {
+                        "round_number": r.round_number,
+                        "summary": r.summary,
+                        "image_filename": r.image_filename,
+                        "approved": r.approved,
+                    }
+                    for r in result.history
+                ],
+            })
+            yield f"event: done\ndata: {data}\n\n"
+        except FileNotFoundError as e:
+            yield f"event: error\ndata: {e}\n\n"
+        except ValueError as e:
+            yield f"event: error\ndata: {e}\n\n"
+        except Exception:
+            logger.exception("Improvement failed")
+            yield "event: error\ndata: Improvement failed. Check server logs.\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

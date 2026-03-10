@@ -220,3 +220,5 @@ Every concept-explainer and most pipeline diagrams include a **bottom section** 
 - Never use a legend or colour key — the layout itself should make relationships obvious
 - Never use serif, monospace, or decorative typefaces — all text must be Inter (or Plus Jakarta Sans)
 - Never apply purple to borders, large background fills, or full paragraphs of text
+- Never duplicate arrows between the same pair of elements — one arrow per logical relationship
+- Never draw arrows from individual sub-items when a single arrow from their group container conveys the same relationship

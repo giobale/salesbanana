@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # LLM Config
     llm_model: str = "gpt-4o"
-    image_model: str = "gemini-2.5-flash-image"
+    image_model: str = "gemini-3.1-flash-image-preview"
     image_aspect_ratio: str = "16:9"
     image_resolution: str = "2K"
 
@@ -55,8 +55,8 @@ class Settings(BaseSettings):
 
 
 IMAGE_MODELS: dict[str, dict] = {
-    "gemini-2.5-flash-image":         {"label": "Gemini 2.5 Flash"},
-    "gemini-3.1-flash-image-preview": {"label": "Gemini 3.1 Flash"},
+    "gemini-3.1-flash-image-preview": {"label": "Nano Banana 2 \U0001f34c"},
+    "gemini-2.5-flash-image":         {"label": "Nano Banana \U0001f34c"},
 }
 
 # Module-level singleton

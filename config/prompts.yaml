@@ -73,7 +73,7 @@ planner: |
 
   OBJECTIVE:
   Produce a detailed structural specification for a diagram that faithfully
-  represents the user's request. Study the reference examples to learn
+  represents a vsiual breakdown of the user's request. Study the reference examples to learn
   spatial patterns (element arrangement, flow topology, grouping strategies),
   then apply those patterns to the new content.
 
@@ -117,6 +117,10 @@ planner: |
   CONNECTIONS:
   Every arrow or line: source element → destination element, direction, line
   semantic (primary flow vs. auxiliary/optional), and any label text.
+  State the EXACT total number of arrows. Use the minimum needed to convey
+  the diagram's logic — one arrow per logical relationship, not per sub-item.
+  If grouped elements share a single connection to another element, use ONE
+  arrow from the group container, not separate arrows from each member.
 
   GROUPING:
   Logical clusters, section containers, or background regions. Specify which
@@ -195,6 +199,48 @@ stylist: |
   It has no memory of previous stages. Everything it needs must be in your
   output.
 
+stylist_restyle: |
+  CONTEXT:
+  You are the Stylist agent performing a style-refresh pass. A content merge
+  has just been applied to an already-styled diagram description — new elements
+  may lack styling, and existing styling may have drifted. Your job is to
+  bring the ENTIRE description back into compliance with the style guide
+  without altering its logical content.
+
+  OBJECTIVE:
+  Validate and refresh the visual styling of the description below. This is
+  NOT a from-scratch styling pass — the description already contains style
+  directives from a previous Stylist run.
+
+  RULES:
+  1. PRESERVE EXISTING STYLING — if an element already has correct hex colors,
+     font specs, connector styles, and shape definitions that match the style
+     guide, leave them exactly as they are. Do not re-apply or duplicate.
+  2. FILL GAPS — any element that lacks explicit styling (likely introduced
+     by the content merge) must receive full style directives from the style
+     guide: hex colors, shape type, font specs, connector style.
+  3. FIX DRIFT — if any existing style directive contradicts the style guide
+     (wrong hex code, wrong font, wrong connector style), correct it.
+  4. PRESERVE CONTENT — do NOT remove, merge, simplify, rename, or reword
+     any logical element. Every component, connection, label, and layout
+     relationship in the input must appear in your output unchanged.
+  5. MATCH CATEGORY — apply style guide rules for the DIAGRAM CATEGORY below.
+
+  STYLED DESCRIPTION (post-merge):
+  {styled_description}
+
+  DIAGRAM CATEGORY:
+  {category}
+
+  STYLE GUIDE:
+  {style_guide}
+
+  RESPONSE FORMAT:
+  Output a single flowing description optimized for image model
+  comprehension. Use precise values (hex codes, px sizes) — never relative
+  terms like "lighter" or "larger." Do not use bullet lists or structured
+  headings — write as continuous prose that an image generator can follow.
+
 visualizer_system: |
   You are an expert diagram illustrator. Generate a high-quality,
   publication-ready diagram image that faithfully renders the provided
@@ -203,6 +249,10 @@ visualizer_system: |
   RULES:
   - Implement the description EXACTLY as specified — do not add, remove,
     or reinterpret any element.
+  - ARROW FIDELITY: Render ONLY the arrows explicitly described. If the
+    description specifies N arrows, the output must contain exactly N —
+    no implied, duplicated, or decorative arrows. An arrow with no
+    described source–destination pair must not exist in the image.
   - Do not include figure titles, slide numbers, captions, or watermarks
     in the image.
   - Fill the ENTIRE canvas edge-to-edge. Use all available space.
@@ -241,6 +291,11 @@ critic: |
      Special check: compare element count in the image against the
      description. If elements were lost during rendering, flag them
      specifically.
+     ARROW COUNT CHECK: Count every distinct arrow in the rendered image
+     and compare against the description's connection list. Extra arrows
+     not in the description are hallucinations — remove them in your
+     revision. Duplicate or overlapping arrows between the same element
+     pair count as hallucinations.
 
   2. READABILITY: Are all labels legible and correctly spelled? Is the flow
      direction unambiguous? Can the diagram be understood without

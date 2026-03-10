@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SalesBanana</title>
+  <title>SalesBanana 🍌</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -279,6 +279,22 @@
       margin-top: 20px;
     }
 
+    .btn-download {
+      background: #fff;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .btn-download:hover {
+      background: var(--primary-light);
+    }
+
+    .btn-download svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
     /* ── Improvement section ──────────────────── */
 
     .improve-section {
@@ -355,11 +371,27 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 0;
+      padding: 10px;
       border-bottom: 1px solid var(--gray-light);
+      border-left: 3px solid transparent;
+      cursor: pointer;
+      transition: background 0.15s, border-left-color 0.15s;
+      border-radius: 4px;
     }
 
     .history-item:last-child { border-bottom: none; }
+
+    .history-item:hover { background: var(--gray-bg); }
+
+    .history-item.selected {
+      background: var(--primary-light);
+      border-left-color: var(--primary);
+    }
+
+    .history-item.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
 
     .history-number {
       font-size: 12px;
@@ -508,6 +540,49 @@
       color: var(--dark);
     }
 
+    /* ── Confirm modal ─────────────────────────── */
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 26, 46, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 32px;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
+
+    .modal-box p {
+      font-size: 14px;
+      color: var(--gray);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
     /* ── Utility ──────────────────────────────── */
 
     .hidden { display: none !important; }
@@ -584,8 +659,15 @@
   <!-- Result State -->
   <div id="state-result" class="card hidden">
     <img id="result-img" class="result-image" src="" alt="Generated diagram" />
-    <div class="meta-row">
-      <span class="badge" id="badge-rounds"></span>
+
+    <div class="result-actions">
+      <button id="btn-download" class="btn btn-download" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10 3a.75.75 0 01.75.75v7.69l2.22-2.22a.75.75 0 011.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 011.06-1.06l2.22 2.22V3.75A.75.75 0 0110 3z"/>
+          <path d="M3 15.75a.75.75 0 01.75-.75h12.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z"/>
+        </svg>
+        Download PNG
+      </button>
     </div>
 
     <!-- Improvement section -->
@@ -595,7 +677,7 @@
       <div id="improve-error" class="error-box"></div>
       <div class="improve-loading" id="improve-loading">
         <div class="spinner-small"></div>
-        <span>Applying improvement...</span>
+        <span id="improve-step-text">Applying improvement...</span>
       </div>
       <div class="improve-btn-row">
         <button id="btn-again" class="btn btn-secondary" type="button">Generate Another</button>
@@ -614,6 +696,19 @@
   </div>
 </main>
 
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <h3 id="confirm-modal-title"></h3>
+    <p id="confirm-modal-body"></p>
+    <div class="modal-actions">
+      <button id="confirm-modal-alt" class="btn btn-secondary hidden" type="button"></button>
+      <button id="confirm-modal-cancel" class="btn btn-secondary" type="button">Cancel</button>
+      <button id="confirm-modal-ok" class="btn btn-primary" type="button">Continue</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   const stateInput   = document.getElementById('state-input');
@@ -624,20 +719,57 @@
   const btnGenerate  = document.getElementById('btn-generate');
   const btnAgain     = document.getElementById('btn-again');
   const btnImprove   = document.getElementById('btn-improve');
+  const btnDownload  = document.getElementById('btn-download');
   const errorBox     = document.getElementById('error');
   const stepText     = document.getElementById('step-text');
   const resultImg    = document.getElementById('result-img');
-  const badgeRounds  = document.getElementById('badge-rounds');
   const improveInput = document.getElementById('improve-input');
   const improveError = document.getElementById('improve-error');
   const improveLoading = document.getElementById('improve-loading');
+  const improveStepText = document.getElementById('improve-step-text');
   const improveHistory = document.getElementById('improve-history');
   const historyList  = document.getElementById('history-list');
+  const confirmModal = document.getElementById('confirm-modal');
+  const confirmModalTitle = document.getElementById('confirm-modal-title');
+  const confirmModalBody = document.getElementById('confirm-modal-body');
+  const confirmModalAlt = document.getElementById('confirm-modal-alt');
+  const confirmModalCancel = document.getElementById('confirm-modal-cancel');
+  const confirmModalOk = document.getElementById('confirm-modal-ok');
+
+  // Returns: 'ok', 'alt', or 'cancel'
+  function showConfirmModal(opts) {
+    return new Promise(function (resolve) {
+      confirmModalTitle.textContent = opts.title || 'Are you sure?';
+      confirmModalBody.textContent = opts.message;
+      confirmModalOk.textContent = opts.okLabel || 'Continue';
+      if (opts.altLabel) {
+        confirmModalAlt.textContent = opts.altLabel;
+        confirmModalAlt.classList.remove('hidden');
+      } else {
+        confirmModalAlt.classList.add('hidden');
+      }
+      confirmModal.classList.add('active');
+      function cleanup() {
+        confirmModal.classList.remove('active');
+        confirmModalCancel.removeEventListener('click', onCancel);
+        confirmModalOk.removeEventListener('click', onOk);
+        confirmModalAlt.removeEventListener('click', onAlt);
+      }
+      function onCancel() { cleanup(); resolve('cancel'); }
+      function onOk() { cleanup(); resolve('ok'); }
+      function onAlt() { cleanup(); resolve('alt'); }
+      confirmModalCancel.addEventListener('click', onCancel);
+      confirmModalOk.addEventListener('click', onOk);
+      confirmModalAlt.addEventListener('click', onAlt);
+    });
+  }
 
   // State
   let currentRunDir = null;
   let improvementHistory = [];
   let isImproving = false;
+  let selectedBranchRound = null;
+  let currentImageUrl = null;
 
   // Category templates — guide users on what content to provide per element
   var categoryTemplates = {
@@ -779,6 +911,10 @@
     if (stepInterval) { clearInterval(stepInterval); stepInterval = null; }
   }
 
+  function getOutputRelPath() {
+    return currentRunDir.split('/output/')[1];
+  }
+
   function renderHistory() {
     if (improvementHistory.length === 0) {
       hide(improveHistory);
@@ -786,11 +922,40 @@
     }
     show(improveHistory);
     historyList.innerHTML = '';
+
+    var relPath = getOutputRelPath();
+
+    // Round 0 — Original
+    var origDiv = document.createElement('div');
+    origDiv.className = 'history-item' + (selectedBranchRound === 0 ? ' selected' : '') + (isImproving ? ' disabled' : '');
+    origDiv.addEventListener('click', function () { selectBranch(0); });
+
+    var origNum = document.createElement('span');
+    origNum.className = 'history-number';
+    origNum.textContent = '0';
+
+    var origImg = document.createElement('img');
+    origImg.className = 'history-thumb';
+    origImg.src = '/output/' + relPath + '/00_original_image.png';
+    origImg.alt = 'Original';
+    origImg.onerror = function () { this.src = '/output/' + relPath + '/final.png'; };
+
+    var origSummary = document.createElement('span');
+    origSummary.className = 'history-summary';
+    origSummary.textContent = 'Original diagram';
+
+    origDiv.appendChild(origNum);
+    origDiv.appendChild(origImg);
+    origDiv.appendChild(origSummary);
+    historyList.appendChild(origDiv);
+
+    // Improvement rounds
     improvementHistory.forEach(function (item) {
       var div = document.createElement('div');
-      div.className = 'history-item';
+      div.className = 'history-item' + (selectedBranchRound === item.round_number ? ' selected' : '') + (isImproving ? ' disabled' : '');
+      div.addEventListener('click', function () { selectBranch(item.round_number); });
 
-      var imageUrl = '/output/' + currentRunDir.split('/output/')[1] + '/' + item.image_filename;
+      var imageUrl = '/output/' + relPath + '/' + item.image_filename;
 
       var numEl = document.createElement('span');
       numEl.className = 'history-number';
@@ -813,9 +978,40 @@
     });
   }
 
+  function selectBranch(roundNumber) {
+    if (isImproving || !currentRunDir) return;
+
+    // Selecting the latest round is a no-op (deselect)
+    var latestRound = improvementHistory.length;
+    if (roundNumber === latestRound && selectedBranchRound === null) return;
+
+    if (selectedBranchRound === roundNumber) {
+      // Toggle off: deselect
+      selectedBranchRound = null;
+      resultImg.src = currentImageUrl + '?t=' + Date.now();
+    } else {
+      selectedBranchRound = roundNumber;
+      // Preview: swap main image to the selected round's image
+      var relPath = getOutputRelPath();
+      var previewUrl;
+      if (roundNumber === 0) {
+        previewUrl = '/output/' + relPath + '/00_original_image.png';
+      } else {
+        var item = improvementHistory.find(function (h) { return h.round_number === roundNumber; });
+        if (item) {
+          previewUrl = '/output/' + relPath + '/' + item.image_filename;
+        }
+      }
+      if (previewUrl) {
+        resultImg.src = previewUrl + '?t=' + Date.now();
+      }
+    }
+    renderHistory();
+  }
+
   function showResult(imageUrl, roundsText, runDir) {
+    currentImageUrl = imageUrl;
     resultImg.src = imageUrl + '?t=' + Date.now();
-    badgeRounds.textContent = roundsText;
     currentRunDir = runDir;
 
     stopStepProgress();
@@ -841,6 +1037,8 @@
     // Reset improvement state
     currentRunDir = null;
     improvementHistory = [];
+    selectedBranchRound = null;
+    currentImageUrl = null;
     hide(improveHistory);
     historyList.innerHTML = '';
     improveInput.value = '';
@@ -888,41 +1086,90 @@
       return;
     }
 
+    // Confirmation if branching (discarding improvements)
+    if (selectedBranchRound !== null) {
+      var latestRound = improvementHistory.length;
+      if (selectedBranchRound < latestRound) {
+        var discardCount = latestRound - selectedBranchRound;
+        var msg = 'This will discard ' + discardCount + ' improvement' +
+          (discardCount !== 1 ? 's' : '') +
+          ' (rounds ' + (selectedBranchRound + 1) + ' through ' + latestRound + ').';
+        var result = await showConfirmModal({
+          title: 'Discard improvements?',
+          message: msg,
+        });
+        if (result !== 'ok') return;
+      }
+    }
+
     improveError.style.display = 'none';
     isImproving = true;
     btnImprove.disabled = true;
     improveLoading.classList.add('active');
+    renderHistory(); // Re-render to apply disabled state
 
     try {
-      var res = await fetch('/api/improve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          run_dir: currentRunDir,
-          instruction: instruction,
-          image_model: modelEl.value,
-        }),
-      });
-
-      var data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Improvement failed.');
+      var payload = {
+        run_dir: currentRunDir,
+        instruction: instruction,
+        image_model: modelEl.value,
+      };
+      if (selectedBranchRound !== null) {
+        payload.branch_from_round = selectedBranchRound;
       }
 
-      // Update image
-      resultImg.src = data.image_url + '?t=' + Date.now();
+      var res = await fetch('/api/improve-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-      // Update badge
-      var totalRounds = data.history.length;
-      badgeRounds.textContent = totalRounds + (totalRounds === 1 ? ' improvement' : ' improvements');
+      if (!res.ok) {
+        var errData = await res.json();
+        throw new Error(errData.error || 'Improvement failed.');
+      }
 
-      // Update history
-      improvementHistory = data.history;
-      renderHistory();
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
 
-      // Clear input
-      improveInput.value = '';
+      while (true) {
+        var chunk = await reader.read();
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true });
+
+        // Parse SSE events from buffer
+        var parts = buffer.split('\n\n');
+        buffer = parts.pop(); // keep incomplete last part
+        for (var i = 0; i < parts.length; i++) {
+          var block = parts[i].trim();
+          if (!block) continue;
+          var eventType = 'message';
+          var dataLine = '';
+          var lines = block.split('\n');
+          for (var j = 0; j < lines.length; j++) {
+            if (lines[j].startsWith('event: ')) {
+              eventType = lines[j].slice(7);
+            } else if (lines[j].startsWith('data: ')) {
+              dataLine = lines[j].slice(6);
+            }
+          }
+
+          if (eventType === 'step') {
+            improveStepText.textContent = dataLine + '...';
+          } else if (eventType === 'done') {
+            var data = JSON.parse(dataLine);
+            currentImageUrl = data.image_url;
+            resultImg.src = data.image_url + '?t=' + Date.now();
+            improvementHistory = data.history;
+            selectedBranchRound = null;
+            renderHistory();
+            improveInput.value = '';
+          } else if (eventType === 'error') {
+            throw new Error(dataLine || 'Improvement failed.');
+          }
+        }
+      }
 
     } catch (err) {
       improveError.textContent = err.message;
@@ -931,13 +1178,47 @@
       isImproving = false;
       btnImprove.disabled = false;
       improveLoading.classList.remove('active');
+      improveStepText.textContent = 'Applying improvement...';
+      renderHistory();
     }
   }
 
   btnGenerate.addEventListener('click', generate);
   btnImprove.addEventListener('click', improve);
 
-  btnAgain.addEventListener('click', function () {
+  btnDownload.addEventListener('click', async function () {
+    var src = resultImg.src;
+    if (!src) return;
+    try {
+      var res = await fetch(src);
+      var blob = await res.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'diagram.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed:', err);
+    }
+  });
+
+  btnAgain.addEventListener('click', async function () {
+    if (improvementHistory.length > 0) {
+      var result = await showConfirmModal({
+        title: 'Start a new diagram?',
+        message: 'You will lose the current diagram and all its improvements. You can also open a new tab to keep this work.',
+        okLabel: 'Start new here',
+        altLabel: 'Open in new tab',
+      });
+      if (result === 'cancel') return;
+      if (result === 'alt') {
+        window.open(window.location.href, '_blank');
+        return;
+      }
+    }
     briefEl.value = '';
     briefEl.placeholder = defaultPlaceholder;
     selectedCategory = null;
@@ -945,6 +1226,8 @@
     chips.forEach(function (c) { c.classList.remove('selected'); });
     currentRunDir = null;
     improvementHistory = [];
+    selectedBranchRound = null;
+    currentImageUrl = null;
     improveInput.value = '';
     hide(stateResult);
     hide(improveHistory);
@@ -966,7 +1249,7 @@
   });
 
   // Convert pasted HTML to structured plain text preserving bullets and indentation
-  briefEl.addEventListener('paste', function (e) {
+  function handleStructuredPaste(textarea, e) {
     const html = e.clipboardData.getData('text/html');
     if (!html) return; // no HTML on clipboard, let default plain-text paste happen
 
@@ -1009,14 +1292,17 @@
     if (text.length === 0 || text === plain.trim()) return;
 
     e.preventDefault();
-    const start = briefEl.selectionStart;
-    const end = briefEl.selectionEnd;
-    const before = briefEl.value.slice(0, start);
-    const after = briefEl.value.slice(end);
-    briefEl.value = before + text + after;
-    briefEl.selectionStart = briefEl.selectionEnd = start + text.length;
-    briefEl.dispatchEvent(new Event('input'));
-  });
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = textarea.value.slice(0, start);
+    const after = textarea.value.slice(end);
+    textarea.value = before + text + after;
+    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    textarea.dispatchEvent(new Event('input'));
+  }
+
+  briefEl.addEventListener('paste', function (e) { handleStructuredPaste(briefEl, e); });
+  document.getElementById('improve-input').addEventListener('paste', function (e) { handleStructuredPaste(this, e); });
 
   briefEl.focus();
 })();

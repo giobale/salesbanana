@@ -39,3 +39,31 @@ def apply_style(visual_description: str, category: str = "") -> str:
     logger.info("Stylist produced styled description: %d words", len(styled.split()))
 
     return styled
+
+
+def restyle(styled_description: str, category: str = "") -> str:
+    """
+    Validate and refresh styling on an already-styled description after a
+    content merge. Fills gaps on new elements, fixes drift, preserves
+    existing correct styling.
+    """
+    style_guide = _load_style_guide()
+
+    prompt = get_prompt(
+        "stylist_restyle",
+        styled_description=styled_description,
+        category=category,
+        style_guide=style_guide,
+    )
+
+    response = client.chat.completions.create(
+        model=settings.llm_model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=3000,
+    )
+
+    restyled = response.choices[0].message.content.strip()
+    logger.info("Stylist restyle produced description: %d words", len(restyled.split()))
+
+    return restyled
