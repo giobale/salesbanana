@@ -1249,7 +1249,7 @@
   });
 
   // Convert pasted HTML to structured plain text preserving bullets and indentation
-  briefEl.addEventListener('paste', function (e) {
+  function handleStructuredPaste(textarea, e) {
     const html = e.clipboardData.getData('text/html');
     if (!html) return; // no HTML on clipboard, let default plain-text paste happen
 
@@ -1292,14 +1292,17 @@
     if (text.length === 0 || text === plain.trim()) return;
 
     e.preventDefault();
-    const start = briefEl.selectionStart;
-    const end = briefEl.selectionEnd;
-    const before = briefEl.value.slice(0, start);
-    const after = briefEl.value.slice(end);
-    briefEl.value = before + text + after;
-    briefEl.selectionStart = briefEl.selectionEnd = start + text.length;
-    briefEl.dispatchEvent(new Event('input'));
-  });
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = textarea.value.slice(0, start);
+    const after = textarea.value.slice(end);
+    textarea.value = before + text + after;
+    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    textarea.dispatchEvent(new Event('input'));
+  }
+
+  briefEl.addEventListener('paste', function (e) { handleStructuredPaste(briefEl, e); });
+  document.getElementById('improve-input').addEventListener('paste', function (e) { handleStructuredPaste(this, e); });
 
   briefEl.focus();
 })();
